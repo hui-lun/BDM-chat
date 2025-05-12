@@ -370,6 +370,20 @@ body {
   animation-delay: 0.4s;
 }
 
+.error-popup {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background-color: #f44336;
+  color: white;
+  padding: 10px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  z-index: 9999;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+
 /* history style */
 .drawer-mask {
   position: fixed;

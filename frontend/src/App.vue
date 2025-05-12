@@ -6,6 +6,11 @@
   </div>
 
   <div class="chat-app">
+    <div v-if="showError" class="error-popup">
+      {{ errorMsg }}
+    </div>
+    
+    
     <div v-if="showHistoryMenu" class="drawer-mask" @click="closeHistoryMenu"></div>
 
     <!-- chat history -->
@@ -151,6 +156,7 @@ const chatHistory = ref([ // Hardcoded initial chat history examples
   { title: '2024-04-25 Morning', time: '09:21', messages: [{ sender: 'user', text: '你好' }, { sender: 'ai', text: '哈囉！有什麼可以幫您？' }] },
   { title: '2024-04-24 Afternoon', time: '15:02', messages: [{ sender: 'user', text: '今天天氣？' }, { sender: 'ai', text: '晴時多雲' }] }
 ])
+
 const menuIdx = ref(null) // Menu index for context actions
 const editIdx = ref(null) // Edit index for renaming
 const renameTitle = ref('') // Temporary title for renaming
@@ -168,6 +174,7 @@ function selectHistory(idx) {
   selectedHistoryIdx.value = idx
   closeHistoryMenu()
 }
+
 function toggleMenu(idx) { menuIdx.value = menuIdx.value === idx ? null : idx; editIdx.value = null }
 function closeMenu() { menuIdx.value = null; editIdx.value = null }
 function startRename(idx, title) { editIdx.value = idx; menuIdx.value = null; renameTitle.value = title; nextTick(() => renameInput.value?.focus()) }
@@ -176,6 +183,7 @@ function finishRename(idx) {
   if (val) chatHistory.value[idx].title = val
   editIdx.value = null
 }
+
 function openDeleteModal(idx) {
   menuIdx.value = null
   nextTick(() => {
@@ -191,6 +199,7 @@ function openDeleteModal(idx) {
     pendingDeleteIdx = idx
   })
 }
+
 function closeDeleteModal() { showDeleteModal.value = false; deletePopoverPos.value = null; pendingDeleteIdx = null }
 function doDeleteHistory() {
   if (pendingDeleteIdx !== null) {
@@ -204,6 +213,21 @@ const deletePopoverStyle = computed(() => {
   return { position: 'absolute', top: deletePopoverPos.value.top + 'px', left: deletePopoverPos.value.left + 'px', zIndex: 3000 }
 })
 
+
+// ====== Error Message State ======
+const showError = ref(false)
+const errorMsg = ref('')
+
+// Show error popup with a message
+function showErrorMessage(msg) {
+  errorMsg.value = msg
+  showError.value = true
+  setTimeout(() => {
+    showError.value = false
+    errorMsg.value = ''
+  }, 3000)
+}
+
 // ====== Outlook API integration ======
 function handleEmailChange(autoSend = false) {
   if (Office.context.mailbox?.item) {
@@ -213,23 +237,27 @@ function handleEmailChange(autoSend = false) {
         if (content) {
           query.value = content
           if (autoSend) sendQuery()
-        } else alert("This email body is empty.")
+        } else {
+          showErrorMessage("This email body is empty.")
+        }
       } else {
-        alert("Failed to retrieve email body.")
+        showErrorMessage("Failed to retrieve email body.")
         console.error("getAsync error:", result.error)
       }
     })
   } else {
-    alert("Cannot access email item.")
+    showErrorMessage("Cannot access email item.")
   }
 }
+
 function sendEmailContent() {
   if (typeof Office === 'undefined' || !Office.context.mailbox?.item) {
-    alert("Not inside Outlook add-in environment.")
+    showErrorMessage("Not inside Outlook add-in environment.")
     return
   }
   handleEmailChange(true)
 }
+
 
 // ====== Initial setup when mounted ======
 onMounted(() => {
@@ -237,6 +265,13 @@ onMounted(() => {
   if (typeof Office === 'undefined') return
   Office.onReady(() => { loading.value = false })
 })
+
+// onMounted(() => {
+//   document.addEventListener('click', closeMenuOnOutside)
+//   loading.value = false // 立即關閉 loading，確保畫面可用
+// })
+
+
 function closeMenuOnOutside(e) {
   const drawer = document.querySelector('.history-drawer')
   if (drawer && !drawer.contains(e.target)) closeMenu()
@@ -269,7 +304,7 @@ const sendQuery = async () => {
     controller = new AbortController()
     let res
     if (useAgent.value) {
-      res = await axios.post('/agent-chat', { email_content: userMsg }, { signal: controller.signal })
+      res = await axios.post('/agent-chat', { agent_query: userMsg }, { signal: controller.signal })
       messages.value[messages.value.length - 1] = { sender: 'ai', text: res.data.summary || JSON.stringify(res.data) }
     } else {
       res = await axios.post('/chat', { query: userMsg }, { signal: controller.signal })
@@ -293,3 +328,4 @@ const stopGenerating = () => {
   controller = null
 }
 </script>
+

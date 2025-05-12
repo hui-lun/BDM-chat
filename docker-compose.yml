@@ -2,6 +2,8 @@ services:
   backend:
     build: ./backend
     container_name: langchain-backend
+    env_file:
+      - .env   
     environment:
       - POSTGRES_HOST=${POSTGRES_HOST}
       - POSTGRES_PORT=${POSTGRES_PORT}
@@ -9,6 +11,10 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB}
       - VLLM_API_BASE=${VLLM_API_BASE}
+      - MS_CLIENT_ID=${MS_CLIENT_ID}
+      - MS_CLIENT_SECRET=${MS_CLIENT_SECRET}
+      - MS_TENANT_ID=${MS_TENANT_ID}
+      - MS_SCOPE=${MS_SCOPE}
 
     ports:
       - "8000:8000"

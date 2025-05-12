@@ -14,43 +14,42 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 或指定網址 ["http://localhost", "https://yourdomain.com"]
+    allow_origins=["*"],  # or specify url ["http://localhost", "https://yourdomain.com"]
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# LLM config
-llm = ChatOpenAI(
-    model="gemma-3-27b-it",
-    openai_api_key="EMPTY",
-    openai_api_base=os.getenv("VLLM_API_BASE")
-)
+from .graph.llm import llm
 
 @app.get("/")
 def root():
     return {"message": "LangGraph + LangChain backend running!"}
 
 from pydantic import BaseModel
-from .agent import run_agent_workflow
 
 
 class ChatRequest(BaseModel):
     query: str
 
 class AgentChatRequest(BaseModel):
-    email_content: str
+    agent_query: str
+
+from .graph.graph import app as agent_graph_app, AgentState
 
 @app.post("/agent-chat")
 def agent_chat(req: AgentChatRequest):
-    result = run_agent_workflow(req.email_content)
-    # 只回傳 summary 給前端，或可依需求擴充
-    return {"summary": result.get("summary", ""), "full_result": result}
+    state = AgentState(agent_query=req.agent_query, summary="")
+    result = agent_graph_app.invoke(state)
+    # send summary to frontent
+    return {"summary": result["summary"]}
+
+
 
 @app.post("/chat")
 def chat(req: ChatRequest):
     response = llm.invoke(req.query)
-    # 強制轉為字串，避免 [object Object]
+    # force convert to string, avoid [object Object]
     if hasattr(response, "content"):
         text = response.content
     elif hasattr(response, "text"):

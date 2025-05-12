@@ -2,8 +2,11 @@ fastapi==0.115.12
 uvicorn==0.34.2
 langchain==0.3.24
 langchain-openai==0.3.14
-langchain-community==0.3.22
+langchain-community
 langgraph==0.3.33
 langgraph-checkpoint-sqlite==2.0.6
 psycopg2-binary==2.9.10
 SQLAlchemy==2.0.40
+O365==2.1.2
+pymongo
+duckduckgo-search

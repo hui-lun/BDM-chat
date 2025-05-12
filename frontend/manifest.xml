@@ -11,9 +11,9 @@
   <ProviderName>Chatbot Dev</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
 
-  <DisplayName DefaultValue="Chatbot Giga5"/>
+  <DisplayName DefaultValue="Chatbot Giga7-beta"/>
   <Description DefaultValue="A chatbot connected to your mail content"/>
-  <IconUrl DefaultValue="https://officedev.github.io/Office-Add-in-samples/Samples/hello-world/outlook-hello-world/assets/icon-32.png"/>
+  <IconUrl DefaultValue="https://officedev.github.io/Office-Add-in-samples/Samples/hello-world/outlook-hello-world/assets/icon-64.png"/>
   <HighResolutionIconUrl DefaultValue="https://officedev.github.io/Office-Add-in-samples/Samples/hello-world/outlook-hello-world/assets/icon-64.png"/>
   <SupportUrl DefaultValue="https://learn.microsoft.com/office/dev/add-ins/overview/office-add-in-code-samples"/>
 
@@ -87,7 +87,7 @@
           <bt:Image id="icon80" DefaultValue="https://officedev.github.io/Office-Add-in-samples/Samples/hello-world/outlook-hello-world/assets/icon-80.png"/>
         </bt:Images>
         <bt:Urls>
-          <bt:Url id="chatbotPane" DefaultValue="https://d79c-59-124-2-11.ngrok-free.app/"/>
+          <bt:Url id="chatbotPane" DefaultValue="https://52e3-59-124-2-11.ngrok-free.app/"/>
         </bt:Urls>
         <bt:ShortStrings>
           <bt:String id="groupLabel" DefaultValue="Chatbot"/>
@@ -98,6 +98,18 @@
           <bt:String id="buttonDesc" DefaultValue="Click to open the chatbot in a taskpane."/>
         </bt:LongStrings>
       </Resources>
+
+      <!-- test -->
+      <WebApplicationInfo>
+        <Id>e4cd9ba7-9a55-459c-8bfb-ef83d4f725a4</Id>
+        <Resource>api://52e3-59-124-2-11.ngrok-free.app/e4cd9ba7-9a55-459c-8bfb-ef83d4f725a4</Resource>
+        <Scopes>
+          <Scope>openid</Scope>
+          <Scope>profile</Scope>
+          <Scope>User.Read</Scope>
+          <Scope>Mail.Read</Scope>
+        </Scopes>
+      </WebApplicationInfo>
     </VersionOverrides>
   </VersionOverrides>
 </OfficeApp>
