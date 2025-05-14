@@ -1,0 +1,152 @@
+fields:
+  - mapping: MODEL_GEN
+    description: The generation or version number of the model definition.
+  - mapping: ProjectModel
+    description: The unique identifier of the product model.
+  - mapping: gbtSn
+    description: The GIGABYTE serial number of the server.
+  - mapping: appInfo
+    description: Categories or applications the system is designed for, such as HPC or HyperConverged.
+  - mapping: barebonePowerConsumption
+    description: Estimated power consumption of the barebone system in watts.
+  - mapping: psuCount
+    description: Number of power supply units installed in the system.
+  - mapping: psuWatt
+    description: Wattage capacity of each PSU.
+  - mapping: rev
+    description: Revision or variant code of the product model.
+  - mapping: RAWdescription
+    description: Unstructured string summarizing system form factor, CPU, LAN, memory, etc.
+  - mapping: CPU_GENPLAT_INFO
+    description: Combined info about CPU generation, platform, and socket type.
+  - mapping: CPUBrand
+    description: CPU manufacturer brand (e.g., Intel, AMD).
+  - mapping: CPUGeneration
+    description: CPU architecture or generation name (e.g., Brich Stream).
+  - mapping: CPUSocket
+    description: Socket type of the CPU (e.g., Socket BR / LGA 7529).
+  - mapping: memorySlotCount
+    description: Total number of memory slots on the motherboard.
+  - mapping: memoryChannel
+    description: Number of memory channels supported.
+  - mapping: memoryType
+    description: Memory type supported (e.g., DDR5, DDR4).
+  - mapping: memoryECC
+    description: Whether ECC (Error Correcting Code) memory is supported.
+  - mapping: memoryR_U_DIMM
+    description: Type of memory module supported (e.g., R DIMM, UDIMM).
+  - mapping: memoryMultiplexer
+    description: Indicates presence of memory multiplexer (e.g., MR DIMM).
+  - mapping: Memory_BandWidth
+    description: Memory bandwidth in MT/s (MegaTransfers per second).
+  - mapping: pid
+    description: Product ID or unique internal product reference (may be null).
+  - mapping: webLink
+    description: URL link to product webpage or datasheet.
+  - mapping: PictureList
+    description: URL to the product image.
+  - mapping: RAWstorageInfo
+    description: Raw text summary of storage layout and types.
+  - mapping: RAWpcieInfo
+    description: Raw text summary of PCIe slot layout and bandwidth.
+  - mapping: ExpansionSlot
+    description: Detailed string of PCIe expansion slot configurations.
+  - mapping: OCP
+    description: Indicates OCP NIC slot support status (e.g., None, 3.0).
+  - mapping: Status
+    description: Internal status code of the system.
+  - mapping: Status_Memo
+    description: Additional notes for the system status.
+  - mapping: statusStage
+    description: Development or release stage (e.g., EVT, DVT, MP).
+  - mapping: description
+    description: List of structured specification strings describing major system components.
+  - mapping: storageInfo.location
+    description: The physical location of the storage bays (e.g., Front side, Rear).
+  - mapping: storageInfo.count
+    description: Number of drive slots or bays at the specified location.
+  - mapping: storageInfo.size
+    description: List of supported drive sizes, including physical dimensions (e.g., 2.5 15mm).
+  - mapping: storageInfo.type
+    description: Type of storage device supported (e.g., SATA, NVMe); may be null if not provided.
+  - mapping: storageInfo.source
+    description: Source or controller of the storage; may indicate host bus (e.g., CPU or chipset).
+  - mapping: storageInfo.dimension
+    description: Physical slot form factor, if available (e.g., E1.S, U.2); may be null.
+  - mapping: storageInfo.speed
+    description: Storage interface speed or generation (e.g., Gen4); may be null.
+  - mapping: storageInfo.connector
+    description: List of storage connector type and count pairs (e.g., [["U.2", "2"]]).
+  - mapping: pcieInfo.source
+    description: The origin of PCIe signal routing (e.g., CPU0).
+  - mapping: pcieInfo.dimension
+    description: Physical dimensions of the PCIe slot (e.g., LP for Low Profile).
+  - mapping: pcieInfo.speed
+    description: PCIe generation or speed (e.g., Gen5).
+  - mapping: pcieInfo.deviceType
+    description: Device protocol or interface type (e.g., PCIe).
+  - mapping: pcieInfo.slotBandwidth
+    description: Slot-level bandwidth (e.g., x16).
+  - mapping: pcieInfo.singalBandwidth
+    description: Signal-level bandwidth (e.g., x16).
+  - mapping: systemInfo.ProjectModel
+    description: The project model code repeated inside systemInfo (for correlation).
+  - mapping: systemInfo.gbtsn
+    description: The GIGABYTE serial number repeated inside systemInfo.
+  - mapping: systemInfo.dimensions
+    description: The physical dimensions of the server (length x width x height, in mm).
+  - mapping: systemInfo.motherboard
+    description: The model number of the motherboard installed.
+  - mapping: systemInfo.TPM_HeaderQty
+    description: Quantity of TPM headers supported on the motherboard.
+  - mapping: systemInfo.TPM_YorN
+    description: Indicates if TPM is supported ("Y") or not.
+  - mapping: systemInfo.TPM_Model
+    description: The TPM module model number used.
+  - mapping: systemInfo.powerEfficiency
+    description: The efficiency rating of the power supply unit (e.g., Titanium).
+  - mapping: systemInfo.packagingDimensions
+    description: The dimensions of the shipping package (for transport).
+  - mapping: systemInfo.processor
+    description: The CPU name or architecture used in the system.
+  - mapping: systemInfo.chipset
+    description: The chipset model or type used on the motherboard.
+  - mapping: systemInfo.Cooling_Type
+    description: The type of cooling solution used (e.g., Air Cooling, Liquid Cooling).
+  - mapping: systemInfo.tdpLimit
+    description: Maximum supported CPU TDP and the applicable temperature limit.
+  - mapping: systemInfo.socket
+    description: The CPU socket type.
+  - mapping: systemInfo.CPUBrand
+    description: Brand of the CPU manufacturer (e.g., Intel).
+  - mapping: systemInfo.cpu_qty
+    description: Number of CPUs supported or installed.
+  - mapping: systemInfo.CoreName
+    description: Internal core name of the CPU architecture.
+  - mapping: systemInfo.CPU_CoreID
+    description: CPU core family or identifier string.
+  - mapping: systemInfo.CPUInfo
+    description: Detailed info about the CPU, its brand, architecture, socket, and product family.
+  - mapping: systemInfo.GPUQty
+    description: Number of GPUs supported or pre-installed.
+  - mapping: systemInfo.GPUModule
+    description: GPU module type supported or installed (e.g., SXM, PCIe, NotSupport).
+  - mapping: systemInfo.SupportSERCPU
+    description: Whether the system supports server-grade CPUs.
+  - mapping: systemInfo.SupportWSCPU
+    description: Whether the system supports workstation-grade CPUs.
+  - mapping: systemInfo.netWeight
+    description: The actual weight of the product without packaging.
+  - mapping: systemInfo.grossWeight
+    description: The total weight of the product including packaging and accessories.
+  - mapping: systemInfo.densityFormFactor
+    description: The physical size or height of the server chassis, such as 1U or 2U, representing its rack-mounted form factor.
+  - mapping: systemInfo.lan
+    description: List describing LAN ports including speed, count, and connector type.
+  - mapping: systemInfo.mlan
+    description: List describing management LAN (mLAN) ports, including speed and count.
+  - mapping: systemInfo.psu
+    description: PSU specifications, including count, redundancy, and wattage.
+
+
+

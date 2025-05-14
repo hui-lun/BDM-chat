@@ -17,6 +17,7 @@ def fetch_and_analyze_web_html(query: str) -> dict:
         print(f"[fetch_and_analyze_web_html] summary (empty): {summary}")
     else:
         try:
+            print('*****************************')
             summary = search_and_summarize_advanced(query)
             print('[fetch_and_analyze_web_html] search_and_summarize_advanced output:')
             print(summary)

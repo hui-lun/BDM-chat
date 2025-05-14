@@ -1,6 +1,5 @@
 <template>
   
-  
   <div v-if="loading" class="loading-screen">
     <div class="spinner"></div>
   </div>
@@ -95,6 +94,8 @@
         <span class="icon" @click="openHistoryMenu" title="聊天歷史紀錄">🕑</span>
         <!-- <span class="icon" @click="clearMessages" title="清除聊天紀錄">🗑️</span> -->
         <span class="icon" @click="sendEmailContent" title="傳入信件內容">✉️</span>
+        <span class="icon" @click="openDraftFormtt" title="生草稿">草稿</span>
+        <!-- <span class="icon" @click="createDraftExample" title="產生草稿">📝</span> -->
       </div>
     </div>
 
@@ -105,7 +106,10 @@
           <div v-if="msg.loading" class="loading-dots">
             <span></span><span></span><span></span>
           </div>
-          <div v-else v-html="msg.text"></div>
+          <div v-else>
+            <div v-html="msg.text"></div>
+            <button v-if="msg.isEmailSummary" class="draft-btn" @click="openDraftForm('AI回覆草稿', msg.text)">產生草稿</button>
+          </div>
         </div>
       </div>
     </div>
@@ -228,27 +232,54 @@ function showErrorMessage(msg) {
   }, 3000)
 }
 
-// ====== Outlook API integration ======
+
 function handleEmailChange(autoSend = false) {
-  if (Office.context.mailbox?.item) {
-    Office.context.mailbox.item.body.getAsync("text", (result) => {
-      if (result.status === Office.AsyncResultStatus.Succeeded) {
-        const content = result.value.trim()
-        if (content) {
-          query.value = content
-          if (autoSend) sendQuery()
-        } else {
-          showErrorMessage("This email body is empty.")
-        }
-      } else {
-        showErrorMessage("Failed to retrieve email body.")
-        console.error("getAsync error:", result.error)
-      }
-    })
-  } else {
-    showErrorMessage("Cannot access email item.")
+  const item = Office.context.mailbox?.item;
+  if (!item) {
+    showErrorMessage("Cannot access email item.");
+    return;
   }
+
+  const Title = item.subject || '(無主旨)';
+  const Custom = item.from?.displayName || '(無寄件者)';
+  const BDM = item.to?.map(r => r.displayName).join(', ') || '(無收件者)';
+  const dateTime = item.dateTimeCreated || '(無寄送時間)';
+
+  // 取得信件內容
+  item.body.getAsync("text", (result) => {
+    if (result.status === Office.AsyncResultStatus.Succeeded) {
+      const content = result.value.trim();
+      if (content) {
+        // optional: print info
+        const fullContent = `
+          寄件者: ${Custom}
+          收件者: ${BDM}
+          主旨: ${Title}
+          寄送時間: ${dateTime}
+
+          ${content}
+        `.trim();
+
+        query.value = fullContent;
+        if (autoSend) sendQuery();
+
+        console.log("Email Info:");
+        console.log("From:", from);
+        console.log("To:", to);
+        console.log("Subject:", subject);
+        console.log("Time:", dateTime);
+        console.log("Body:", content);
+      } else {
+        showErrorMessage("This email body is empty.");
+      }
+    } else {
+      showErrorMessage("Failed to retrieve email body.");
+      console.error("getAsync error:", result.error);
+    }
+  });
 }
+
+
 
 function sendEmailContent() {
   if (typeof Office === 'undefined' || !Office.context.mailbox?.item) {
@@ -261,10 +292,17 @@ function sendEmailContent() {
 
 // ====== Initial setup when mounted ======
 onMounted(() => {
-  document.addEventListener('click', closeMenuOnOutside)
-  if (typeof Office === 'undefined') return
-  Office.onReady(() => { loading.value = false })
-})
+  document.addEventListener('click', closeMenuOnOutside);
+
+  console.log("Checking Office context:", typeof Office !== 'undefined' ? Office.context : 'Office not available');
+
+  if (typeof Office === 'undefined') return;
+
+  Office.onReady(() => {
+    console.log("Office.js is ready", Office.context);
+    loading.value = false;
+  });
+});
 
 // onMounted(() => {
 //   document.addEventListener('click', closeMenuOnOutside)
@@ -276,6 +314,32 @@ function closeMenuOnOutside(e) {
   const drawer = document.querySelector('.history-drawer')
   if (drawer && !drawer.contains(e.target)) closeMenu()
 }
+
+// ======================================================================================
+function openDraftForm(subject = '', htmlBody = '') {
+  if (Office.context.mailbox.displayNewMessageForm) {
+    Office.context.mailbox.displayNewMessageForm({
+      toRecipients: ["someone@example.com"],
+      subject: subject || "Draft via displayNewMessageForm",
+      htmlBody: htmlBody || "<p>Hello from Add-in!</p>"
+    });
+  } else {
+    console.error("This Outlook version does not support displayNewMessageForm.");
+  }
+}
+
+function openDraftFormtt() {
+  if (Office.context.mailbox.displayNewMessageForm) {
+    Office.context.mailbox.displayNewMessageForm({
+      toRecipients: ["someone@example.com"],
+      subject: "Draft via displayNewMessageForm",
+      htmlBody: "<p>Hello from Add-in!</p>"
+    });
+  } else {
+    console.error("This Outlook version does not support displayNewMessageForm.");
+  }
+}
+
 
 // ====== Chat handling ======
 const scrollToBottom = () => {
@@ -305,7 +369,8 @@ const sendQuery = async () => {
     let res
     if (useAgent.value) {
       res = await axios.post('/agent-chat', { agent_query: userMsg }, { signal: controller.signal })
-      messages.value[messages.value.length - 1] = { sender: 'ai', text: res.data.summary || JSON.stringify(res.data) }
+      const isEmailSummary = res.data.from_email === true
+      messages.value[messages.value.length - 1] = { sender: 'ai', text: res.data.summary || JSON.stringify(res.data), isEmailSummary }
     } else {
       res = await axios.post('/chat', { query: userMsg }, { signal: controller.signal })
       messages.value[messages.value.length - 1] = { sender: 'ai', text: res.data.response }

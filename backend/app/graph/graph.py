@@ -1,9 +1,10 @@
 from typing_extensions import TypedDict
 from langgraph.graph import StateGraph, END
-from .tools.mail_summarize import process_email
+from .tools.email.mail_summarize import process_email
 from .llm import llm
-from .tools.spec_analyze import search_database
-from .tools.web_analyze import fetch_and_analyze_web_html
+from .tools.spec.spec_analyze import search_database
+from .tools.web.web_analyze import fetch_and_analyze_web_html
+from .tools.email.email_reply import generate_email_reply
 
 # State structure
 class AgentState(TypedDict):
@@ -40,7 +41,6 @@ def email_summarize(state: AgentState):
     }
 
 
-from .tools.email_reply import generate_email_reply
 
 def email_reply(state: AgentState):
     # Call generate_email_reply to generate a reply based on the summary
@@ -51,25 +51,33 @@ def email_reply(state: AgentState):
     return {"summary": reply_state}
 
 
-
+def is_natural_query(text: str) -> bool:
+    email_indicators = ["subject:", "dear", "regards", "best", "sincerely", "message", "thank you", "hi"]
+    if any(word in text.lower() for word in email_indicators) or len(text.split("\n")) > 5:
+        return False
+    return True
 
 def select_tool(state: AgentState):
+    query = state["agent_query"]
+    # 先用 is_natural_query 判斷是不是 email
+    if not is_natural_query(query):
+        print("[select_tool] Detected as email, using 'email_summarize'.")
+        return {"next_node": "email_summarize"}
+    # 不是 email 再用 LLM 判斷 spec_search or web_analyze
     prompt = (
-        f"Given the email content: '{state['agent_query']}', decide which tool to use:\n"
+        f"Given the user input:'{query}', decide which tool to use:\n"
         "1. If the question is about retrieving data from the database, return 'spec_search'.\n"
         "2. If the question requires analyzing web content, return 'web_analyze'.\n"
-        "3. If the question is in the format of an email, return 'email_summarize'.\n"
         "ONLY return the exact tool name without explanation."
     )
     predicted_label = llm.invoke(prompt).content.strip().lower()
     print(f"[select_tool] Predicted: {predicted_label}")
     return {"next_node": predicted_label}
 
+
 def web_analyze(state: AgentState):
     print("[web_analyze] called")
-    user_query = process_email(state["agent_query"])
-    result = fetch_and_analyze_web_html(user_query)
-    print(f"user_query: {user_query}")
+    result = fetch_and_analyze_web_html.invoke(state["agent_query"])
     print(f"result: {result}")
     return {
         "agent_query": state["agent_query"],

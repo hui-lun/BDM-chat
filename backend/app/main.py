@@ -3,6 +3,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from langchain_openai import ChatOpenAI
 import os
+from fastapi import HTTPException
+import requests
+
 
 DATABASE_URL = f"postgresql://{os.getenv('POSTGRES_USER')}:{os.getenv('POSTGRES_PASSWORD')}@{os.getenv('POSTGRES_HOST')}:{os.getenv('POSTGRES_PORT')}/{os.getenv('POSTGRES_DB')}"
 engine = create_engine(DATABASE_URL)
@@ -35,15 +38,25 @@ class ChatRequest(BaseModel):
 class AgentChatRequest(BaseModel):
     agent_query: str
 
+
+class DraftRequest(BaseModel):
+    sso_token: str
+    subject: str
+    body: str
+    to_recipients: list[str]
+
+
 from .graph.graph import app as agent_graph_app, AgentState
 
 @app.post("/agent-chat")
 def agent_chat(req: AgentChatRequest):
     state = AgentState(agent_query=req.agent_query, summary="")
     result = agent_graph_app.invoke(state)
-    # send summary to frontent
-    return {"summary": result["summary"]}
-
+    # 回傳完整資訊給前端
+    return {
+        "summary": result.get("summary", ""),
+        "from_email": result.get("from_email", False)
+    }
 
 
 @app.post("/chat")
@@ -59,3 +72,5 @@ def chat(req: ChatRequest):
     else:
         text = str(response)
     return {"response": text}
+
+

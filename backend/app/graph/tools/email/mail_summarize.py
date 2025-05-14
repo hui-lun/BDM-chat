@@ -13,7 +13,7 @@ from langgraph.prebuilt import create_react_agent
 from typing_extensions import TypedDict
 from langchain_core.messages import BaseMessage, AIMessage, HumanMessage
 
-from ..llm import llm
+from ...llm import llm
 
 
 # === Type Definitions ===

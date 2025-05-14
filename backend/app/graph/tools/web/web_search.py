@@ -1,14 +1,20 @@
 #richard's code
 import re
 from langchain_community.utilities import DuckDuckGoSearchAPIWrapper
-from ..llm import llm
+from ...llm import llm
 
 # === Optimize Query ===
 def optimize_query(query: str) -> str:
     prompt = (
-        f"Only reply with the most suitable English keywords for DuckDuckGo search, no explanations, no punctuation, no extra words. "
-        f"Just output the keywords:\n{query}\n"
-        f"Please follow the whole of query {query} to optimize the keywords."
+        "Extract the most relevant, concise English keywords from the following query for DuckDuckGo search.\n"
+        "Requirements:\n"
+        "- Only output keywords in a single line, separated by spaces.\n"
+        "- Do NOT include explanations, punctuation, or extra words.\n"
+        "- Do NOT include function words, stopwords, or filler words (e.g., 'the', 'is', 'about', 'please').\n"
+        "- Only keep technical terms, product names, model numbers, or core topic words.\n"
+        "- Do NOT translate or modify technical terms or product names.\n"
+        "- Do NOT output anything except the keywords.\n"
+        f"Query: {query}\n"
     )
     try:
         result = llm.invoke(prompt)
@@ -30,8 +36,6 @@ def score_result(res: dict, keywords: list[str]) -> int:
     total_matches = sum(combined.count(kw) for kw in keywords)
     score         = total_matches + 2 * coverage
     return score
-    # combined = (res.get("title", "") + " " + res.get("snippet", "")).lower()
-    # return sum(combined.count(kw) for kw in keywords)
 
 # === Keyword Filter ===
 def keyword_filter(query: str, results: list, top_k: int = 5) -> list:
@@ -50,17 +54,13 @@ def search_and_summarize_advanced(query: str, max_results: int = 10, top_k: int 
     print('********************************') 
     print(f"Optimized Query: {optimized_query}")
     print('********************************')
-    # try:
-    #     results = duck_api.results(optimized_query, max_results)
-    # except Exception as e:
-    #     return f"DuckDuckGo search failed: {e}"
-    # if not results or not isinstance(results, list):
-    #     return "No relevant webpages found."
 
-    full_query = f"{query} {optimized_query}"
-    results = duck_api.results(full_query, max_results)
+    print(f'test optimized_query: {optimized_query}')
+    print('error1')
+    results = duck_api.results(optimized_query, max_results)
+    print('error2')
     # Automatically focus the top_k most relevant results using keyword matching
-    filtered = keyword_filter(full_query, results, top_k=top_k)
+    filtered = keyword_filter(optimized_query, results, top_k=top_k)
 
     context = ""
     print('********************************')
@@ -77,7 +77,7 @@ def search_and_summarize_advanced(query: str, max_results: int = 10, top_k: int 
         f"Optimized Question: {optimized_query}\n"
         f"Search Results:\n{context}\n"
         f"- Only use information that is explicitly present in the search results. Do NOT use any prior knowledge, inference, or assumptions.\n"
-        f"- If the answer cannot be found in the search results, reply exactly: 'Not enough information in the search results.'\n"
+        f"- If the search results cover multiple unrelated topics, only answer for the topic most relevant to the user's question. Do not mix information from different topics.\n"
         f"- Summarize the answer in 200 words or less. Avoid repeating content or the question.\n"
         f"- The answer should be a single, concise paragraph in plain text, without any special formatting, bullet points, or markdown symbols.\n"
         f"- Do not include the results number or URL in the answer.\n"

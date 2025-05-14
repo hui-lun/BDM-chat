@@ -1,14 +1,4 @@
 def generate_email_reply(query: str) -> str:
-    """
-    Generate an email reply based on the chat state.
-    
-    Args:
-    state (AgentState): The current state of the chat session.
-    
-    Returns:
-    AgentState: The updated chat state with the email reply.
-    """
-    print(f"in generate: {query}")
     reply = f"""
     Dear Client,
 

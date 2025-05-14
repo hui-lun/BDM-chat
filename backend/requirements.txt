@@ -9,4 +9,5 @@ psycopg2-binary==2.9.10
 SQLAlchemy==2.0.40
 O365==2.1.2
 pymongo
-duckduckgo-search
+duckduckgo-search==6.3.5
+msal==1.32.3
