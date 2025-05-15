@@ -1,4 +1,4 @@
-fields:
+SPEC:
   - mapping: MODEL_GEN
     description: The generation or version number of the model definition.
   - mapping: ProjectModel
@@ -15,8 +15,6 @@ fields:
     description: Wattage capacity of each PSU.
   - mapping: rev
     description: Revision or variant code of the product model.
-  - mapping: RAWdescription
-    description: Unstructured string summarizing system form factor, CPU, LAN, memory, etc.
   - mapping: CPU_GENPLAT_INFO
     description: Combined info about CPU generation, platform, and socket type.
   - mapping: CPUBrand
@@ -41,14 +39,6 @@ fields:
     description: Memory bandwidth in MT/s (MegaTransfers per second).
   - mapping: pid
     description: Product ID or unique internal product reference (may be null).
-  - mapping: webLink
-    description: URL link to product webpage or datasheet.
-  - mapping: PictureList
-    description: URL to the product image.
-  - mapping: RAWstorageInfo
-    description: Raw text summary of storage layout and types.
-  - mapping: RAWpcieInfo
-    description: Raw text summary of PCIe slot layout and bandwidth.
   - mapping: ExpansionSlot
     description: Detailed string of PCIe expansion slot configurations.
   - mapping: OCP
@@ -140,13 +130,50 @@ fields:
   - mapping: systemInfo.grossWeight
     description: The total weight of the product including packaging and accessories.
   - mapping: systemInfo.densityFormFactor
-    description: The physical size or height of the server chassis, such as 1U or 2U, representing its rack-mounted form factor.
+    description: The physical size or height of the server chassis, such as 1U or 2U, representing its rack-mounted form factor, it can also called density factor.
   - mapping: systemInfo.lan
     description: List describing LAN ports including speed, count, and connector type.
   - mapping: systemInfo.mlan
     description: List describing management LAN (mLAN) ports, including speed and count.
   - mapping: systemInfo.psu
     description: PSU specifications, including count, redundancy, and wattage.
-
-
-
+ 
+QVL:
+  - mapping: BAREBONE
+    description: The main chassis and motherboard assembly without CPU, RAM, or storage pre-installed.
+  - mapping: CPU
+    description: The central processing unit (processor) installed in the system.
+  - mapping: DDR
+    description: The type and configuration of DDR RAM (Double Data Rate memory) used in the system and it means types of storage.
+  - mapping: LAN CARD OCP
+    description: Network interface card installed in the OCP (Open Compute Project) slot.
+  - mapping: LAN CARD PCI-E
+    description: Network interface card installed in a standard PCI Express slot.
+  - mapping: POWER CORD
+    description: The type and specification of power cords used to supply power to the system.
+  - mapping: RAID CARD PCI-E>>>DUAL-PORT
+    description: A PCIe-based RAID controller with dual-port configuration for redundancy or throughput.
+  - mapping: RAID CARD PCI-E>>>OUTWARD-PORT
+    description: A RAID controller card with external connection ports for additional enclosures.
+  - mapping: RAID CARD PCI-E>>>SINGLE-PORT
+    description: A PCIe RAID controller card with a single port connection.
+  - mapping: RAID CARD WITH TRI-MODE
+    description: A RAID controller that supports SAS, SATA, and NVMe (Tri-mode) drives.
+  - mapping: STORAGE 2.5" SSD
+    description: Solid State Drives with a 2.5-inch form factor used for storage.
+  - mapping: STORAGE U.2
+    description: U.2 interface storage devices, typically NVMe SSDs with high performance.
+  - mapping: STORAGE U.3
+    description: U.3 interface storage devices supporting backward compatibility with U.2 and SAS/SATA.
+  - mapping: time
+    description: Timestamp indicating when the data entry or event occurred.
+  - mapping: STORAGE 2.5" HDD
+    description: 2.5-inch form factor mechanical hard disk drive (HDD) commonly used in enterprise servers and laptops for moderate capacity storage.
+  - mapping: STORAGE 3.5" HDD
+    description: 3.5-inch form factor mechanical hard disk drive (HDD) typically used in data centers and backup storage systems for high-capacity requirements.
+  - mapping: STORAGE M.2 SSD
+    description: Solid-state drive using the M.2 interface, offering compact size and high-speed performance for space-constrained, high-efficiency computing environments.
+  - mapping: STORAGE PCI-E SSD
+    description: High-performance solid-state drive connected via the PCI-E interface, designed for data-intensive enterprise applications requiring ultra-fast throughput.
+  - mapping: RAID CARD PCI-E
+    description: RAID controller card installed in a PCI-E slot, used to manage multiple hard drives in RAID configurations for improved performance and redundancy.
