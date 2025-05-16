@@ -51,6 +51,8 @@ SPEC:
     description: Development or release stage (e.g., EVT, DVT, MP).
   - mapping: description
     description: List of structured specification strings describing major system components.
+  - mapping: storageInfo
+    description: List all storageInfo.
   - mapping: storageInfo.location
     description: The physical location of the storage bays (e.g., Front side, Rear).
   - mapping: storageInfo.count
@@ -67,6 +69,8 @@ SPEC:
     description: Storage interface speed or generation (e.g., Gen4); may be null.
   - mapping: storageInfo.connector
     description: List of storage connector type and count pairs (e.g., [["U.2", "2"]]).
+  - mapping: pcieInfo
+    description: List all pcieInfo.
   - mapping: pcieInfo.source
     description: The origin of PCIe signal routing (e.g., CPU0).
   - mapping: pcieInfo.dimension
@@ -79,8 +83,8 @@ SPEC:
     description: Slot-level bandwidth (e.g., x16).
   - mapping: pcieInfo.singalBandwidth
     description: Signal-level bandwidth (e.g., x16).
-  - mapping: systemInfo.ProjectModel
-    description: The project model code repeated inside systemInfo (for correlation).
+  - mapping: systemInfo
+    description: List all systemInfo.
   - mapping: systemInfo.gbtsn
     description: The GIGABYTE serial number repeated inside systemInfo.
   - mapping: systemInfo.dimensions
@@ -142,9 +146,9 @@ QVL:
   - mapping: BAREBONE
     description: The main chassis and motherboard assembly without CPU, RAM, or storage pre-installed.
   - mapping: CPU
-    description: The central processing unit (processor) installed in the system.
+    description: The central processing unit (processor) installed in the system, support CPU.
   - mapping: DDR
-    description: The type and configuration of DDR RAM (Double Data Rate memory) used in the system and it means types of storage.
+    description: The type and configuration of DDR RAM (Double Data Rate memory) used in the system and it means types of storage, support DDR.
   - mapping: LAN CARD OCP
     description: Network interface card installed in the OCP (Open Compute Project) slot.
   - mapping: LAN CARD PCI-E
@@ -177,3 +181,8 @@ QVL:
     description: High-performance solid-state drive connected via the PCI-E interface, designed for data-intensive enterprise applications requiring ultra-fast throughput.
   - mapping: RAID CARD PCI-E
     description: RAID controller card installed in a PCI-E slot, used to manage multiple hard drives in RAID configurations for improved performance and redundancy.
+ 
+ 
+ 
+ 
+ 

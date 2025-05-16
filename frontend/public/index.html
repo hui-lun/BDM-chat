@@ -6,12 +6,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Vue App</title>
     <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
-    <!-- 可以在這裡插入自訂 CSS 或其他 meta 標籤 -->
+    <link rel="stylesheet" href="../src/assets/style.css">
   </head>
   <body>
-    <noscript>
-      <strong>We're sorry but this app doesn't work properly without JavaScript enabled. Please enable it to continue.</strong>
-    </noscript>
+    <div v-if="loading" class="loading-screen" id="preload-loading">
+      <div class="spinner"></div>
+    </div>
+
     <div id="app"></div>
     <!-- built files will be auto injected -->
   </body>

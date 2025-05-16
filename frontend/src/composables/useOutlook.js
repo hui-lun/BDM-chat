@@ -101,23 +101,11 @@ export function useOutlook(showErrorMessage, query, sendQuery) {
     }
   }
 
-  function openDraftFormtt() {
-    if (Office.context.mailbox.displayNewMessageForm) {
-      Office.context.mailbox.displayNewMessageForm({
-        toRecipients: ["someone@example.com"],
-        subject: "Draft via displayNewMessageForm",
-        htmlBody: "<p>Hello from Add-in!</p>"
-      });
-    } else {
-      console.error("This Outlook version does not support displayNewMessageForm.");
-    }
-  }
 
   return {
     handleEmailChange,
     updateLatestMailContent,
     sendEmailContent,
     openDraftForm,
-    openDraftFormtt
   }
 }

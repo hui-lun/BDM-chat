@@ -68,11 +68,18 @@
 </template>
 
 <script setup>
+
 const props = defineProps({
   show: Boolean,
   history: Array,
   showDeleteModal: Boolean,
   deletePopoverPos: Object,
-  deletePopoverStyle: Object
+  deletePopoverStyle: Object,
+  menuIdx: Number,              
+  editIdx: Number,     
+  renameInput: {
+    type: Object,
+    default: null
+  } 
 })
 </script>

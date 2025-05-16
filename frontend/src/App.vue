@@ -17,10 +17,15 @@
       :show-delete-modal="showDeleteModal"
       :delete-popover-pos="deletePopoverPos"
       :delete-popover-style="deletePopoverStyle"
+      :menu-idx="menuIdx"               
+      :edit-idx="editIdx"               
       @select="selectHistory"
       @close="closeHistoryMenu"
       @close-delete="closeDeleteModal"
       @confirm-delete="doDeleteHistory"
+      @toggle-menu="toggleMenu"
+      @start-rename="startRename"
+      @finish-rename="finishRename"
     />
 
 
@@ -28,8 +33,8 @@
     <!-- chatbot Header -->
     <ChatHeader
       @open-history-menu="openHistoryMenu"
+      @close-history-menu="closeHistoryMenu"
       @send-email-content="sendEmailContent"
-      @open-draft-form-tt="openDraftFormtt"
     />
 
     <!-- Chatbot content-->
@@ -39,14 +44,7 @@
     />
 
     <!-- AI Assistant Toggle -->
-    <label style="display:flex;align-items:center;margin-left:12px;font-size:12px;gap:4px">
-      <input 
-        type="checkbox" 
-        v-model="useAgent" 
-        style="width:22px;height:22px;accent-color:#1976d2;margin-right:4px"
-      />
-      智能助理
-    </label>
+
 
     <!-- Chat input area -->
     <ChatFooter
@@ -133,12 +131,17 @@ const {
   handleEmailChange,
   sendEmailContent,
   openDraftForm,
-  openDraftFormtt
 } = useOutlook(showErrorMessage, query, sendQuery)
 
+console.log("initial loading:", loading.value)
 // ====== Initial setup when mounted ======
 onMounted(() => {
   document.addEventListener('click', closeMenuOnOutside)
+
+  const preload = document.getElementById('preload-loading')
+  if (preload) preload.remove()
+
+  
   if (typeof Office === 'undefined') {
     loading.value = false; // 本地開發直接顯示內容
     return;

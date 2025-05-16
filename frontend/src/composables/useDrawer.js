@@ -7,22 +7,29 @@ export function useDrawer() {
     { title: '2024-04-25 Morning', time: '09:21', messages: [{ sender: 'user', text: '你好' }, { sender: 'ai', text: '哈囉！有什麼可以幫您？' }] },
     { title: '2024-04-24 Afternoon', time: '15:02', messages: [{ sender: 'user', text: '今天天氣？' }, { sender: 'ai', text: '晴時多雲' }] }
   ])
-  const menuIdx = ref(null)
-  const editIdx = ref(null)
-  const renameTitle = ref('')
-  const renameInput = ref(null)
-  const showDeleteModal = ref(false)
-  const deletePopoverPos = ref(null)
-  let pendingDeleteIdx = null
+
+  const menuIdx = ref(null) // Menu index for context actions
+  const editIdx = ref(null) // Edit index for renaming
+  const renameTitle = ref('') // Temporary title for renaming
+  const renameInput = ref(null) // Input DOM for renaming focus
+  const showDeleteModal = ref(false) // Whether delete modal is shown
+  const deletePopoverPos = ref(null) // Delete modal positioning
+  let pendingDeleteIdx = null // Index pending delete
 
   function openHistoryMenu() { showHistoryMenu.value = true; closeMenu() }
   function closeHistoryMenu() { showHistoryMenu.value = false; closeMenu() }
   function selectHistory(idx) {
     if (editIdx.value !== null || menuIdx.value !== null) return
+    messages.value = [...chatHistory.value[idx].messages]
     selectedHistoryIdx.value = idx
     closeHistoryMenu()
   }
-  function toggleMenu(idx) { menuIdx.value = menuIdx.value === idx ? null : idx; editIdx.value = null }
+
+  function toggleMenu(idx) { 
+    console.log('Toggling menu for index:', idx); 
+    menuIdx.value = menuIdx.value === idx ? null : idx; 
+    editIdx.value = null 
+}
   function closeMenu() { menuIdx.value = null; editIdx.value = null }
   function startRename(idx, title) { editIdx.value = idx; menuIdx.value = null; renameTitle.value = title; nextTick(() => renameInput.value?.focus()) }
   function finishRename(idx) {
@@ -30,6 +37,7 @@ export function useDrawer() {
     if (val) chatHistory.value[idx].title = val
     editIdx.value = null
   }
+
   function openDeleteModal(idx) {
     menuIdx.value = null
     nextTick(() => {
@@ -45,11 +53,13 @@ export function useDrawer() {
       pendingDeleteIdx = idx
     })
   }
+
   function closeDeleteModal() {
     showDeleteModal.value = false
     deletePopoverPos.value = null
     pendingDeleteIdx = null
   }
+
   function doDeleteHistory() {
     if (pendingDeleteIdx !== null) {
       chatHistory.value.splice(pendingDeleteIdx, 1)
@@ -57,6 +67,7 @@ export function useDrawer() {
       closeDeleteModal()
     }
   }
+  
   const deletePopoverStyle = computed(() => {
     if (!deletePopoverPos.value) return {}
     return { position: 'absolute', top: deletePopoverPos.value.top + 'px', left: deletePopoverPos.value.left + 'px', zIndex: 3000 }

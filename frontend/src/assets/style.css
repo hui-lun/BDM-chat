@@ -235,6 +235,13 @@ body {
   color: #e74c3c;
 }
 
+a.icon {
+  color: inherit;
+  text-decoration: none;
+  cursor: default;
+}
+
+
 .chat-body {
   flex: 1;
   padding: 16px 12px;
@@ -243,6 +250,13 @@ body {
   display: flex;
   flex-direction: column;
 }
+
+
+.message-text {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
 
 .msg-row {
   display: flex;
@@ -288,7 +302,8 @@ body {
   padding: 10px 12px;
 }
 
-.chat-footer input {
+.chat-footer textarea {
+  height: 150px;
   flex: 1;
   padding: 8px 10px;
   border: 1px solid #ccc;

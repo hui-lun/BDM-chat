@@ -34,6 +34,7 @@ export function useChat() {
     } else {
       if (!query.value.trim()) return
       userMsg = query.value
+      // userMsg = query.value.replace(/<br>/g, '\n')
       messages.value.push({ sender: 'user', text: query.value })
       query.value = ''
     }

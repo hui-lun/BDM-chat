@@ -3,6 +3,7 @@ from langchain_openai import ChatOpenAI
 import os
 from datetime import datetime
 from fastapi.middleware.cors import CORSMiddleware
+from .email_to_db import process_email_to_mongo
 
 app = FastAPI()
 
@@ -46,13 +47,13 @@ def mail_format_database(email_info: dict) -> dict:
     """
     將 email_info 格式轉換成標準格式：
     {
-        "Title": ..., "Customer Name": ..., "BDM": ...,
+        "Title": ..., "Company Name": ..., "BDM": ...,
         "Summary": ..., "datetime_str": ...
     }
     """
 
     title = email_info.get("subject", "(無主旨)")
-    customer = email_info.get("from", "(無寄件者)")
+    company_name = email_info.get("from", "(無寄件者)")
     bdm = email_info.get("to", "(無收件者)")
     summary = email_info.get("summary", "(無摘要)")
     raw_date = email_info.get("date", "")
@@ -68,7 +69,7 @@ def mail_format_database(email_info: dict) -> dict:
     # 組合格式
     email = {
         "Title": title,
-        "Customer Name": customer,
+        "Company Name": company_name,
         "BDM": bdm,
         "Summary": summary,
         "datetime_str": datetime_str
@@ -129,8 +130,10 @@ def agent_chat(req: AgentChatRequest):
         print("Parsed email info:", email_info)
 
         #FOR Bill
-        email = mail_format_database(email_info) 
+        email = mail_format_database(email_info)
         print("email_info_bill:",email)
+        summary_db = process_email_to_mongo(email)
+        
 
         # Use the pre-generated summary
         print(email_info['summary'])
@@ -161,4 +164,3 @@ def chat(req: ChatRequest):
     else:
         text = str(response)
     return {"response": text}
-
