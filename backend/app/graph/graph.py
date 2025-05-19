@@ -42,7 +42,7 @@ def is_natural_query(text: str) -> bool:
 
 def select_tool(state: AgentState):
     query = state["agent_query"]
-    # 使用 LLM 判斷 spec_search or web_analyze
+    # let llm decide where to go : spec_search or web_analyze
     prompt = (
         f"Given the user input:'{query}', decide which tool to use:\n"
         "1. If the question is about retrieving data from the database, return 'spec_search'.\n"

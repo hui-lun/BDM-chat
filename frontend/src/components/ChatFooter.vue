@@ -12,7 +12,7 @@
     <label style="display:flex;align-items:center;font-size:12px; margin-right: auto;">
       <input 
         type="checkbox" 
-        v-model="useAgent" 
+        v-model="useAgentLocal" 
         style="width:22px;height:22px;accent-color:#1976d2;margin-right:4px"
       />
       智能助理
@@ -26,26 +26,39 @@
 
 <script setup>
 import { ref, watch, nextTick } from 'vue'
+
 const props = defineProps({
   modelValue: String,
-  isLoading: Boolean
+  isLoading: Boolean,
+  useAgent: Boolean
 })
-const emit = defineEmits(['update:modelValue', 'send-message'])
-const inputValue = ref(props.modelValue || '')
+const emit = defineEmits(['update:modelValue', 'send-message', 'update:useAgent'])
 
+const inputValue = ref(props.modelValue || '')
+const useAgentLocal = ref(props.useAgent ?? false)  // 預設 false，避免 null
+
+// 同步 useAgent 到父層
+watch(useAgentLocal, (val) => {
+  console.log('[DEBUG] emit update:useAgent', val)
+  emit('update:useAgent', val)
+})
+watch(() => props.modelValue, (val) => {
+  inputValue.value = val || ''
+})
+watch(inputValue, (val) => {
+  emit('update:modelValue', val)
+})
 
 function emitMessage() {
   const message = inputValue.value.trim()
   if (message !== '') {
-    emit('send-message', message)  // ✅ 保留這個 emit
-    inputValue.value = ''          // 清空輸入框
+    emit('send-message', message)
+    inputValue.value = ''
   }
 }
 
-// 處理按鍵行為
 function handleEnter(e) {
   if (e.shiftKey) {
-    // Shift+Enter 換行
     const textarea = e.target
     const start = textarea.selectionStart
     const end = textarea.selectionEnd
@@ -55,17 +68,7 @@ function handleEnter(e) {
       textarea.selectionStart = textarea.selectionEnd = start + 1
     })
   } else {
-    // Enter 送出
     emitMessage()
   }
 }
-
-
-watch(() => props.modelValue, (val) => {
-  inputValue.value = val || ''
-})
-watch(inputValue, (val) => {
-  emit('update:modelValue', val)
-})
 </script>
-

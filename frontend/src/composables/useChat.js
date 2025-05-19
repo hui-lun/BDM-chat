@@ -21,6 +21,7 @@ export function useChat() {
   // Support mailInfo object structure
   const sendQuery = async (mailInfo = null) => {
     let userMsg
+    console.log('[DEBUG] useAgent:', useAgent.value)
     if (mailInfo) {
       // Format email info as a string
       currentMailInfo.value = mailInfo  // Save mailInfo

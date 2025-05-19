@@ -50,6 +50,7 @@
     <ChatFooter
       v-model="query"
       :isLoading="isLoading"
+      v-model:useAgent="useAgent"   
       @send-message="handleButtonClick"
     />
   </div>
