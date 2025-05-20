@@ -102,5 +102,7 @@ def process_email_to_mongo(email: dict) -> str:
         project_col.insert_one(new_doc)
         print("✅ Inserted new document with thread_id.")
  
-    return email["Summary"]
+    return {
+        "thread_id": thread_id,
+    }
  

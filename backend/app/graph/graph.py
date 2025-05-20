@@ -5,6 +5,7 @@ from .llm import llm
 from .tools.spec.spec_analyze import search_database
 from .tools.web.web_analyze import fetch_and_analyze_web_html
 from .tools.email.email_reply import generate_email_reply
+from .checkpoint import get_checkpointer
 
 # State structure
 class AgentState(TypedDict):
@@ -80,4 +81,5 @@ graph.add_edge("spec_search", END)
 graph.add_edge("web_analyze", END)
 
 # Compile the graph
-app = graph.compile()
+checkpointer = get_checkpointer()
+app = graph.compile(checkpointer=checkpointer)

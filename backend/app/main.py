@@ -132,8 +132,9 @@ def agent_chat(req: AgentChatRequest):
         #FOR Bill
         email = mail_format_database(email_info)
         print("email_info_bill:",email)
-        summary_db = process_email_to_mongo(email)
-        
+        thread_id_db = process_email_to_mongo(email)
+        thread_id = thread_id_db["thread_id"]
+        config = {"configurable": {"thread_id": thread_id}}
 
         # Use the pre-generated summary
         print(email_info['summary'])
@@ -142,7 +143,12 @@ def agent_chat(req: AgentChatRequest):
         state = AgentState(agent_query=query, summary="")
     
     print("is_email",is_email)
-    result = agent_graph_app.invoke(state)
+
+    # Pass config only if it exists
+    if config:
+        result = agent_graph_app.invoke(state, config=config)
+    else:
+        result = agent_graph_app.invoke(state)
     print("result", result)
     
     return {
