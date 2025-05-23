@@ -1,5 +1,6 @@
 <template>
-  <div class="chat-footer">
+  <div class="chat-footer" ref="footer">
+    <div class="resize-handle" @mousedown="startResize"></div>
     <textarea
       v-model="inputValue"
       @keydown.enter.prevent="handleEnter"
@@ -26,6 +27,7 @@
 
 <script setup>
 import { ref, watch, nextTick } from 'vue'
+import { useResize } from '../composables/useResize'
 
 const props = defineProps({
   modelValue: String,
@@ -71,4 +73,8 @@ function handleEnter(e) {
     emitMessage()
   }
 }
+
+// 調整大小相關邏輯
+const footer = ref(null)
+const { startResize } = useResize(footer, { minHeight: 60 })
 </script>

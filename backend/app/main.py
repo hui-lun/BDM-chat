@@ -31,12 +31,6 @@ class AgentChatRequest(BaseModel):
     agent_query: str
 
 
-class DraftRequest(BaseModel):
-    sso_token: str
-    subject: str
-    body: str
-    to_recipients: list[str]
-
 
 from .graph.graph import app as agent_graph_app, AgentState
 
