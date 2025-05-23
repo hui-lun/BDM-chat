@@ -26,6 +26,7 @@ const emit = defineEmits(['open-draft-form'])
 const generateDraft = (msg) => {
   if (!msg.mailInfo) return
   
+  const subject = `Re: ${msg.mailInfo.title || 'No Subject'}`
   const draftTemplate = `Dear ${msg.mailInfo.customer}, 
 
     Thank you for your inquiry. Based on your request:
@@ -40,7 +41,8 @@ const generateDraft = (msg) => {
     <br>
     ${msg.mailInfo.BDM}`
 
-  emit('open-draft-form', 'AI回覆草稿', draftTemplate, msg.mailInfo.customerEmail)
+  emit('open-draft-form', draftTemplate)
+  //emit('open-draft-form', subject, draftTemplate, msg.mailInfo.customerEmail)
 }
 
 onUpdated(() => {

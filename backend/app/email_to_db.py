@@ -4,7 +4,11 @@ import uuid
 from datetime import datetime
 from pymongo import MongoClient
 from dotenv import load_dotenv
+import re
  
+
+def normalize_title(title: str) -> str:
+    return re.sub(r"^(RE:|FW:|FWD:)\s*", "", title, flags=re.IGNORECASE).strip()
  
 def connect_mongo():
     load_dotenv()
@@ -46,7 +50,8 @@ def process_email_to_mongo(email: dict) -> str:
         raise ValueError(f"❌ BDM_id not found for: {email['BDM']}")
     bdm_id = bdm_info["BDM_id"]
  
-    query_key = {"Title": email["Title"]}
+    normalized_title = normalize_title(email["Title"])
+    query_key = {"Title": normalized_title}
     existing = project_col.find_one(query_key)
  
     if existing:
@@ -80,7 +85,7 @@ def process_email_to_mongo(email: dict) -> str:
         thread_id = f'{bdm_id}-{company_id}-{date_code}{shortid}'
  
         new_doc = {
-            "Title": email["Title"],
+            "Title": normalized_title,
             "Weekly update": [],
             "Server Used": [],
             "End user": None,

@@ -86,20 +86,29 @@ export function useOutlook(showErrorMessage, query, sendQuery) {
     handleEmailChange(true)
   }
 
-  function openDraftForm(subject = '', body = '', toEmail = '') {
-    if (Office.context.mailbox.displayNewMessageForm) {
-      // Convert text to HTML format
-      const htmlBody = body.split('\n').map(line => `<p>${line}</p>`).join('')
+  // function openDraftForm(subject = '', body = '', toEmail = '') {
+  //   if (Office.context.mailbox.displayNewMessageForm) {
+  //     // Convert text to HTML format
+  //     const htmlBody = body.split('\n').map(line => `<p>${line}</p>`).join('')
       
-      Office.context.mailbox.displayNewMessageForm({
-        toRecipients: [toEmail],  // Use the provided email from mailInfo
-        subject: subject || "Draft via displayNewMessageForm",
-        htmlBody: htmlBody || "<p>Hello from Add-in!</p>"
-      });
-    } else {
-      console.error("This Outlook version does not support displayNewMessageForm.");
-    }
+  //     Office.context.mailbox.displayNewMessageForm({
+  //       toRecipients: [toEmail],  // Use the provided email from mailInfo
+  //       subject: subject || "Draft via displayNewMessageForm",
+  //       htmlBody: htmlBody || "<p>Hello from Add-in!</p>"
+  //     });
+  //   } else {
+  //     console.error("This Outlook version does not support displayNewMessageForm.");
+  //   }
+  // }
+
+  function openDraftForm(body = '') {
+  if (Office.context.mailbox?.item?.displayReplyForm) {
+    const htmlBody = body.split('\n').map(line => `<p>${line}</p>`).join('');
+    Office.context.mailbox.item.displayReplyForm(htmlBody);
+  } else {
+    console.error("This Outlook version does not support displayReplyForm.");
   }
+}
 
 
   return {

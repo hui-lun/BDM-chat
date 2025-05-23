@@ -4,7 +4,7 @@ import os
 from datetime import datetime
 from fastapi.middleware.cors import CORSMiddleware
 from .email_to_db import process_email_to_mongo
-
+import uuid
 app = FastAPI()
 
 app.add_middleware(
@@ -124,6 +124,7 @@ def agent_chat(req: AgentChatRequest):
     is_email = False
     email_info = None
     
+
     if 'Subject:' in query:
         is_email = True
         email_info = parse_email_query(query)
@@ -139,17 +140,21 @@ def agent_chat(req: AgentChatRequest):
         # Use the pre-generated summary
         print(email_info['summary'])
         state = AgentState(agent_query=email_info['summary'], summary="")
+        result = agent_graph_app.invoke(state, config=config)
     else:
+        thread_id = uuid.uuid4().hex[:8]
+        config = {"configurable": {"thread_id": thread_id}}
         state = AgentState(agent_query=query, summary="")
+        result = agent_graph_app.invoke(state, config=config)
     
     print("is_email",is_email)
 
     # Pass config only if it exists
-    if config:
-        result = agent_graph_app.invoke(state, config=config)
-    else:
-        result = agent_graph_app.invoke(state)
-    print("result", result)
+    # if config:
+    #     result = agent_graph_app.invoke(state, config=config)
+    # else:
+    #     result = agent_graph_app.invoke(state)
+    # print("result", result)
     
     return {
         "summary": result.get("summary", ""),
