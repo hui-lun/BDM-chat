@@ -19,7 +19,6 @@ def connect_mongo():
     client = MongoClient(uri)
     return client
  
- 
 def process_email_to_mongo(email: dict) -> str:
     """
     email: {
@@ -50,8 +49,7 @@ def process_email_to_mongo(email: dict) -> str:
         raise ValueError(f"❌ BDM_id not found for: {email['BDM']}")
     bdm_id = bdm_info["BDM_id"]
  
-    normalized_title = normalize_title(email["Title"])
-    query_key = {"Title": normalized_title}
+    query_key = {"Title": email["Title"]}
     existing = project_col.find_one(query_key)
  
     if existing:
@@ -60,8 +58,14 @@ def process_email_to_mongo(email: dict) -> str:
             summary_list = [summary_list] if summary_list else []
         summary_list.append(email["Summary"])
  
+        bdm_email_list = existing.get("BDM Email", [])
+        if not isinstance(bdm_email_list, list):
+            bdm_email_list = [bdm_email_list] if bdm_email_list else []
+        bdm_email_list.append(email["Email"])
+       
         update_fields = {
             "Summary": summary_list,
+            "BDM Email": bdm_email_list,
             "update date": dt,
             "Company_id": company_id,
             "BDM_id": bdm_id
@@ -85,12 +89,12 @@ def process_email_to_mongo(email: dict) -> str:
         thread_id = f'{bdm_id}-{company_id}-{date_code}{shortid}'
  
         new_doc = {
-            "Title": normalized_title,
+            "Title": email["Title"],
             "Weekly update": [],
             "Server Used": [],
             "End user": None,
             "BDM_id": bdm_id,
-            "Status": None,
+            "Status": 0,
             "Country": None,
             "Customer Type": None,
             "Industry": [],
@@ -102,7 +106,8 @@ def process_email_to_mongo(email: dict) -> str:
             "update date": dt,
             "region": None,
             "Company_id": company_id,
-            "Sender": None
+            "Sender": None,
+            "BDM Email": [email["Email"]]
         }
         project_col.insert_one(new_doc)
         print("✅ Inserted new document with thread_id.")
@@ -110,4 +115,3 @@ def process_email_to_mongo(email: dict) -> str:
     return {
         "thread_id": thread_id,
     }
- 

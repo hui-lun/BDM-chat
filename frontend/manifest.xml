@@ -11,7 +11,7 @@
   <ProviderName>Chatbot Dev</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
 
-  <DisplayName DefaultValue="Chatbot Giga8"/>
+  <DisplayName DefaultValue="BDM.Agent"/>
   <Description DefaultValue="A chatbot connected to your mail content"/>
   <IconUrl DefaultValue="https://officedev.github.io/Office-Add-in-samples/Samples/hello-world/outlook-hello-world/assets/icon-64.png"/>
   <HighResolutionIconUrl DefaultValue="https://officedev.github.io/Office-Add-in-samples/Samples/hello-world/outlook-hello-world/assets/icon-64.png"/>
@@ -51,6 +51,7 @@
       <Hosts>
         <Host xsi:type="MailHost">
           <DesktopFormFactor>
+            <!-- when reading mails -->
             <ExtensionPoint xsi:type="MessageReadCommandSurface">
               <OfficeTab id="TabDefault">
                 <Group id="cmdGroup">
@@ -75,6 +76,31 @@
                 </Group>
               </OfficeTab>
             </ExtensionPoint>
+            <!-- when writing mails -->
+            <ExtensionPoint xsi:type="MessageComposeCommandSurface">
+              <OfficeTab id="TabDefault">
+                <Group id="cmdGroupCompose">
+                  <Label resid="groupLabel"/>
+                  <Control xsi:type="Button" id="openChatbotCompose">
+                    <Label resid="buttonLabel"/>
+                    <Supertip>
+                      <Title resid="buttonTitle"/>
+                      <Description resid="buttonDesc"/>
+                    </Supertip>
+                    <Icon>
+                      <bt:Image size="16" resid="icon16"/>
+                      <bt:Image size="32" resid="icon32"/>
+                      <bt:Image size="80" resid="icon80"/>
+                    </Icon>
+                    <Action xsi:type="ShowTaskpane">
+                      <SourceLocation resid="chatbotPane"/>
+                      <SupportsPinning>true</SupportsPinning>
+                    </Action>
+                  </Control>
+                </Group>
+              </OfficeTab>
+            </ExtensionPoint>
+
           </DesktopFormFactor>
         </Host>
       </Hosts>
@@ -87,22 +113,23 @@
           <bt:Image id="icon80" DefaultValue="https://officedev.github.io/Office-Add-in-samples/Samples/hello-world/outlook-hello-world/assets/icon-80.png"/>
         </bt:Images>
         <bt:Urls>
-          <bt:Url id="chatbotPane" DefaultValue="https://96fc-59-124-2-11.ngrok-free.app/"/>
+          <bt:Url id="chatbotPane" DefaultValue="https://841f-59-124-2-11.ngrok-free.app/"/>
         </bt:Urls>
         <bt:ShortStrings>
           <bt:String id="groupLabel" DefaultValue="Chatbot"/>
-          <bt:String id="buttonLabel" DefaultValue="Open Chatbot"/>
-          <bt:String id="buttonTitle" DefaultValue="Chatbot Panel"/>
+          <bt:String id="buttonLabel" DefaultValue="BDM.Agent"/>
+          <bt:String id="buttonTitle" DefaultValue="Chatbot for BDM"/>
+          <bt:String id="customModuleLabel" DefaultValue="Chatbot Tool" />
         </bt:ShortStrings>
         <bt:LongStrings>
-          <bt:String id="buttonDesc" DefaultValue="Click to open the chatbot in a taskpane."/>
+          <bt:String id="buttonDesc" DefaultValue="Click to open the BDM.Agent in a taskpane."/>
         </bt:LongStrings>
       </Resources>
 
       <!-- test -->
       <WebApplicationInfo>
         <Id>e4cd9ba7-9a55-459c-8bfb-ef83d4f725a4</Id>
-        <Resource>api://96fc-59-124-2-11.ngrok-free.app/e4cd9ba7-9a55-459c-8bfb-ef83d4f725a4</Resource>
+        <Resource>api://841f-59-124-2-11.ngrok-free.app/e4cd9ba7-9a55-459c-8bfb-ef83d4f725a4</Resource>
         <Scopes>
           <Scope>openid</Scope>
           <Scope>profile</Scope>

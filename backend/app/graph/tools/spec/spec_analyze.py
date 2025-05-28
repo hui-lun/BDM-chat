@@ -258,8 +258,13 @@ def search_database(query: str) -> str:
             #----------summarize----------#
             print(f"Program execution time : {last_end-first_start:4f}")   
             return return_result
+        
         except Exception as e:
             print(f"An error occurred: {e}")
+            return "database not found this server"
+    else:
+        #要再補一個spec search projectmodel
+        return "database not found this server"
 
 def analyze_key(question):
     if "qvl" not in question:

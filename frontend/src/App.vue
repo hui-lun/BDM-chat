@@ -34,6 +34,7 @@
     <ChatHeader
       @open-history-menu="openHistoryMenu"
       @close-history-menu="closeHistoryMenu"
+      @clear-messages="clearMessages"
       @send-email-content="sendEmailContent"
     />
 
@@ -58,7 +59,7 @@
 
 
 <script setup>
-import { ref, nextTick, onMounted, computed } from 'vue'
+import { ref, nextTick, onMounted, computed , watch} from 'vue'
 import ChatHeader from './components/ChatHeader.vue'
 import ChatBody from './components/ChatBody.vue'
 import ChatFooter from './components/ChatFooter.vue'
@@ -66,6 +67,8 @@ import ChatHistoryMenu from './components/ChatHistoryMenu.vue'
 import { useChat } from './composables/useChat'
 import { useOutlook } from './composables/useOutlook'
 import { useDrawer } from './composables/useDrawer'
+
+localStorage.setItem('should-restore-chat', 'true')
 
 // ====== Chat State and API Handling ======
 const {
@@ -76,7 +79,8 @@ const {
   chatBody,
   sendQuery,
   stopGenerating,
-  scrollToBottom
+  scrollToBottom,
+  clearMessages
 } = useChat()
 
 const loading = ref(true) // Plugin readiness loading
@@ -141,6 +145,62 @@ onMounted(() => {
 
   const preload = document.getElementById('preload-loading')
   if (preload) preload.remove()
+
+  // 確保 useAgent 永遠為 true
+  useAgent.value = true
+
+  watch([messages, useAgent, selectedHistoryIdx], ([newMessages, agent, idx]) => {
+    try {
+      const payload = {
+        messages: newMessages,
+        useAgent: agent,
+        selectedHistoryIdx: idx,
+      }
+      localStorage.setItem('cached-chat-session', JSON.stringify(payload))
+      // 開發用 log
+      console.log('[watch] 快取聊天紀錄已更新')
+    } catch (e) {
+      console.error('[watch] 儲存聊天紀錄失敗', e)
+    }
+  }, { deep: true })
+
+
+
+  // ========= 🌟 還原流程 =========
+  const shouldRestore = localStorage.getItem('should-restore-chat') === 'true'
+  console.log('[Mounted] shouldRestore =', shouldRestore)
+
+  if (shouldRestore) {
+    const cached = localStorage.getItem('cached-chat-session')
+    console.log('[Mounted] 嘗試還原 cached-chat-session =', cached)
+
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached)
+        if (parsed.messages) {
+          messages.value = parsed.messages
+          console.log('[Mounted] 還原 messages：', parsed.messages)
+        }
+        // 強制將 useAgent 設為 true，忽略儲存的值
+        useAgent.value = true
+        console.log('[Mounted] 強制設定 useAgent 為 true')
+        if (parsed.selectedHistoryIdx !== undefined) {
+          selectedHistoryIdx.value = parsed.selectedHistoryIdx
+          console.log('[Mounted] 還原 selectedHistoryIdx：', parsed.selectedHistoryIdx)
+        }
+      } catch (e) {
+        console.error('[Mounted] 聊天還原失敗', e)
+      }
+    } else {
+      console.warn('[Mounted] 找不到快取聊天紀錄')
+    }
+
+    localStorage.removeItem('should-restore-chat')
+    console.log('[Mounted] 移除 should-restore-chat flag')
+  } else {
+    console.log('[Mounted] 無需還原聊天紀錄')
+  }
+
 
   
   if (typeof Office === 'undefined') {

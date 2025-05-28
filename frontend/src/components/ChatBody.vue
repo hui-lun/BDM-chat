@@ -5,6 +5,13 @@
         <div v-if="msg.loading" class="loading-dots">
           <span></span><span></span><span></span>
         </div>
+        
+
+        <div v-if="msg.chartData" class="chart-container">
+          <img :src="msg.chartData.imageUrl" alt="BDM 狀態圖表" class="chart-image" />
+        </div>
+
+
         <div v-else>
           <div class="message-text" v-html="msg.text"></div>
           <button v-if="msg.isEmail" class="draft-btn" @click="generateDraft(msg)">產生草稿</button>
@@ -57,4 +64,12 @@ onUpdated(() => {
   white-space: pre-wrap;
   word-wrap: break-word;
 }
+
+/* 圖表容器樣式 */
+.chart-container {
+  margin: 10px 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
 </style>

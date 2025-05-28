@@ -30,12 +30,12 @@ export function useChat() {
       To: ${mailInfo.BDM}
       Date: ${mailInfo.dateTime}
 
-      ${mailInfo.body}`
+      ${mailInfo.body.trim()}`
       messages.value.push({ sender: 'user', text: userMsg })
     } else {
       if (!query.value.trim()) return
       userMsg = query.value
-      // userMsg = query.value.replace(/<br>/g, '\n')
+      userMsg = query.value.replace(/<br>/g, '\n')
       messages.value.push({ sender: 'user', text: query.value })
       query.value = ''
     }
@@ -48,6 +48,34 @@ export function useChat() {
       let res
       if (useAgent.value) {
         res = await axios.post('/agent-chat', { agent_query: userMsg }, { signal: controller.signal })
+        // add
+        const responseData = res.data.summary || res.data.response || ''
+        let parsedResponse = {}
+        try {
+          // 嘗試解析 JSON 字符串
+          parsedResponse = typeof responseData === 'string' ? 
+                          JSON.parse(responseData) : 
+                          responseData
+        } catch (e) {
+          // 如果不是 JSON，則當作普通文本處理
+          parsedResponse = { 
+            type: 'text', 
+            message: responseData 
+          }
+        }
+        if (parsedResponse.type === 'chart' && parsedResponse.chart_data) {
+          messages.value[messages.value.length - 1] = {
+            sender: 'ai',
+            text: parsedResponse.message,
+            chartData: {
+              imageUrl: parsedResponse.chart_data,
+              contentType: parsedResponse.content_type || 'image/png',
+              cleanup: () => {}  // 不需要清理，因為是 base64 數據
+            }
+          }
+          return
+        }
+        // add
         const isEmail = res.data.from_email === true
         messages.value[messages.value.length - 1] = { 
           sender: 'ai', 
@@ -78,6 +106,12 @@ export function useChat() {
     controller = null
   }
 
+  // Clear all chat messages
+  const clearMessages = () => {
+    messages.value = []
+    currentMailInfo.value = null
+  }
+
   return {
     query,
     messages,
@@ -86,6 +120,7 @@ export function useChat() {
     chatBody,
     sendQuery,
     stopGenerating,
-    scrollToBottom
+    scrollToBottom,
+    clearMessages
   }
 }
