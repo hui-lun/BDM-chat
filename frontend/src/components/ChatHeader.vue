@@ -79,13 +79,31 @@ const openQASidebar = () => {
   font-size: 1.2rem;
 }
 
-.header-icons {
+.header-icons .icon {
+  user-select: none;
+  transition: color 0.2s;
+  font-size: 1.3em;
+  margin-left: 12px;
+  cursor: pointer;
+}
+
+.header-icons .icon:hover {
+  color: #e74c3c;
+}
+
+a.icon {
+  color: inherit;
+  text-decoration: none;
+  cursor: default;
+}
+
+/* .header-icons {
   display: flex;
   gap: 1rem;
   align-items: center;
-}
+} */
 
-.icon {
+/* .icon {
   cursor: pointer;
   font-size: 1.2rem;
   opacity: 0.7;
@@ -102,7 +120,7 @@ const openQASidebar = () => {
 .icon:hover {
   opacity: 1;
   background-color: rgba(0, 0, 0, 0.05);
-}
+} */
 
 .qa-button {
   display: flex;
