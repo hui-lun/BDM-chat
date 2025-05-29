@@ -1,9 +1,12 @@
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, HTTPException
 from langchain_openai import ChatOpenAI
 import os
+import msgpack
 from datetime import datetime
 from fastapi.middleware.cors import CORSMiddleware
 from .email_to_db import process_email_to_mongo
+from pymongo import MongoClient
+from dotenv import load_dotenv
 import uuid
 app = FastAPI()
 
@@ -29,6 +32,26 @@ class ChatRequest(BaseModel):
 
 class AgentChatRequest(BaseModel):
     agent_query: str
+
+class QAResponse(BaseModel):
+    question: str
+    answer: str
+
+class QAHistoryResponse(BaseModel):
+    title: str
+    qa_list: list[QAResponse]
+
+# Load environment variables
+load_dotenv()
+MONGODB_IP = os.getenv("MONGODB_IP")
+MONGODB_USER = os.getenv("MONGODB_USER")
+MONGODB_PASSWORD = os.getenv("MONGODB_PASSWORD")
+
+# Initialize MongoDB connection
+uri = f"mongodb://{MONGODB_USER}:{MONGODB_PASSWORD}@{MONGODB_IP}:27017/admin"
+client = MongoClient(uri)
+project_col = client["BDM-mgmt"]["BDM-project"]
+checkpoint_col = client["checkpointing_db"]["checkpoints"]
 
 
 
@@ -169,4 +192,48 @@ def chat(req: ChatRequest):
         text = response.message
     else:
         text = str(response)
-    return {"response": text}
+    return {"response": response}
+
+@app.get("/api/qa-history/{title}", response_model=QAHistoryResponse)
+async def get_qa_history(title: str):
+    """
+    Get Q&A history for a given title.
+    Questions are taken from BDM Email field, answers from checkpoint summary field.
+    """
+    project_doc = project_col.find_one({"Title": title})
+    if not project_doc:
+        return {"title": title, "qa_list": []}
+
+    thread_id = project_doc.get("thread_id")
+    if not thread_id:
+        return {"title": title, "qa_list": []}
+
+    # Get questions from BDM Email field
+    bdm_email_list = project_doc.get("BDM Email", [])
+    if not isinstance(bdm_email_list, list) or not bdm_email_list:
+        return {"title": title, "qa_list": []}
+
+    # Get checkpoints for this thread
+    qa_list = []
+    checkpoints = checkpoint_col.find({"thread_id": thread_id}).sort("checkpoint.ts", -1)
+
+    for i, cp in enumerate(checkpoints):
+        raw_cp = cp.get("checkpoint")
+        if not raw_cp or i >= len(bdm_email_list):
+            continue
+        try:
+            unpacked = msgpack.unpackb(raw_cp, raw=False)
+            cv = unpacked.get("channel_values", {})
+            summary = cv.get("summary")
+
+            answer = summary[0] if isinstance(summary, list) else summary
+            if answer and answer.strip():
+                qa_list.append({
+                    "question": bdm_email_list[i],
+                    "answer": answer
+                })
+        except Exception as e:
+            print(f"Error processing checkpoint: {e}")
+            continue
+
+    return {"title": title, "qa_list": qa_list}

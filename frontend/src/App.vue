@@ -28,6 +28,13 @@
       @finish-rename="finishRename"
     />
 
+    <!-- Q&A History Sidebar -->
+    <QASidebar
+      :is-visible="showQASidebar"
+      :title="currentTitle"
+      @close="closeQASidebar"
+    />
+
 
 
     <!-- chatbot Header -->
@@ -36,6 +43,8 @@
       @close-history-menu="closeHistoryMenu"
       @clear-messages="clearMessages"
       @send-email-content="sendEmailContent"
+      @open-qa-sidebar="openQASidebar"
+      :current-title="currentTitle"
     />
 
     <!-- Chatbot content-->
@@ -64,11 +73,19 @@ import ChatHeader from './components/ChatHeader.vue'
 import ChatBody from './components/ChatBody.vue'
 import ChatFooter from './components/ChatFooter.vue'
 import ChatHistoryMenu from './components/ChatHistoryMenu.vue'
+import QASidebar from './components/QASidebar.vue'
 import { useChat } from './composables/useChat'
 import { useOutlook } from './composables/useOutlook'
 import { useDrawer } from './composables/useDrawer'
 
 localStorage.setItem('should-restore-chat', 'true')
+
+// Current title for Q&A history
+const currentTitle = ref('')
+const showQASidebar = ref(false)
+
+// Initialize chat history state
+const chatHistory = ref([])
 
 // ====== Chat State and API Handling ======
 const {
@@ -81,15 +98,13 @@ const {
   stopGenerating,
   scrollToBottom,
   clearMessages
-} = useChat()
-
-const loading = ref(true) // Plugin readiness loading
+} = useChat(chatHistory)
 
 // ====== Drawer Management (composable) ======
 const {
   showHistoryMenu,
   selectedHistoryIdx,
-  chatHistory,
+  chatHistory: drawerChatHistory,
   menuIdx,
   editIdx,
   renameTitle,
@@ -99,6 +114,7 @@ const {
   deletePopoverStyle,
   openHistoryMenu,
   closeHistoryMenu,
+  selectHistory,
   toggleMenu,
   closeMenu,
   startRename,
@@ -106,15 +122,27 @@ const {
   openDeleteModal,
   closeDeleteModal,
   doDeleteHistory
-} = useDrawer()
+} = useDrawer(messages)
 
+// Sync chatHistory between composables
+watch(chatHistory, (newVal) => {
+  if (drawerChatHistory && drawerChatHistory.value !== newVal) {
+    drawerChatHistory.value = newVal;
+  }
+}, { deep: true, immediate: true })
 
-// Corrected selectHistory: Switch chat content when clicking on history
-function selectHistory(idx) {
-  messages.value = [...chatHistory.value[idx].messages]
-  selectedHistoryIdx.value = idx
+// Open/close Q&A sidebar
+const openQASidebar = (title) => {
+  currentTitle.value = title
+  showQASidebar.value = true
   closeHistoryMenu()
 }
+
+const closeQASidebar = () => {
+  showQASidebar.value = false
+}
+
+const loading = ref(true) // Plugin readiness loading
 
 // ====== Error Message State ======
 const showError = ref(false)
