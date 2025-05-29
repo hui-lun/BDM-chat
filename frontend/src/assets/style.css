@@ -104,6 +104,12 @@
 }
 
 
+.drawer-item-right {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
 .drawer-menu-btn {
   margin-left: 10px;
   font-size: 20px;
@@ -120,7 +126,8 @@
 .drawer-menu-popup {
   position: absolute;
   right: 16px;
-  top: 40px;
+  top: 100%;
+  margin-top: 5px;
   min-width: 100px;
   background: #fff;
   border: 1px solid #eee;

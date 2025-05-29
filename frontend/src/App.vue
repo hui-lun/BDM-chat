@@ -30,6 +30,7 @@
       @start-rename="startRename"
       @finish-rename="finishRename"
       @update-rename-input="updateRenameInput"
+      @open-delete-modal="openDeleteModal"
     />
 
     <!-- Q&A History Sidebar -->

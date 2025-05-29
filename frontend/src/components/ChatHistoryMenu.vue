@@ -21,7 +21,7 @@
                 <span class="drawer-time">{{ item.time }}</span>
                 <span class="drawer-menu-btn" @click.stop="$emit('toggle-menu', idx)">⋯</span>
 
-                <div v-if="menuIdx === idx" class="drawer-menu-popup" @click.stop>
+                <div v-if="menuIdx === idx" class="drawer-menu-popup" :style="{top: 'auto'}" @click.stop>
                   <div class="drawer-menu-item" @click.stop="$emit('start-rename', idx, item.title)">重新命名</div>
                   <div class="drawer-menu-item danger" @click.stop="$emit('open-delete-modal', idx)">刪除</div>
                 </div>
