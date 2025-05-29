@@ -1,7 +1,8 @@
 import { ref, nextTick, watch } from 'vue'
 import axios from 'axios'
+import { v4 as uuidv4 } from 'uuid'
 
-export function useChat() {
+export function useChat(chatHistory) {
   const query = ref('')
   const messages = ref([])
   const isLoading = ref(false)
@@ -17,6 +18,43 @@ export function useChat() {
     })
   }
   watch(messages, scrollToBottom, { deep: true })
+
+  // Save current chat to history
+  const saveToHistory = () => {
+    try {
+      if (!chatHistory || !chatHistory.value) {
+        console.warn('Chat history not available');
+        return null;
+      }
+      
+      if (!messages.value || messages.value.length === 0) {
+        console.warn('No messages to save');
+        return null;
+      }
+      
+      const now = new Date();
+      const timeString = now.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
+      const dateString = now.toISOString().split('T')[0];
+      const title = `對話 ${dateString} ${timeString}`;
+      
+      // Create a new chat history entry
+      const newChat = {
+        id: uuidv4(),
+        title,
+        time: timeString,
+        messages: [...messages.value],
+        createdAt: now.toISOString()
+      };
+      
+      // Add to history
+      chatHistory.value.unshift(newChat);
+      console.log('Saved chat to history:', newChat);
+      return newChat;
+    } catch (error) {
+      console.error('Error saving chat history:', error);
+      return null;
+    }
+  }
 
   // Support mailInfo object structure
   const sendQuery = async (mailInfo = null) => {
@@ -109,8 +147,19 @@ export function useChat() {
         messages.value[messages.value.length - 1] = { sender: 'ai', text: 'Error: ' + e.message }
       }
     } finally {
-      isLoading.value = false
-      controller = null
+      try {
+        isLoading.value = false;
+        controller = null;
+        
+        // Save to history after sending a message
+        if (messages.value && messages.value.length > 0) {
+          console.log('Attempting to save chat to history...');
+          const savedChat = saveToHistory();
+          console.log('Chat save result:', savedChat ? 'success' : 'failed');
+        }
+      } catch (error) {
+        console.error('Error in sendQuery finally block:', error);
+      }
     }
   }
 

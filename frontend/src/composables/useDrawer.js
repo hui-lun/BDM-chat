@@ -1,12 +1,9 @@
 import { ref, computed, nextTick } from 'vue'
 
-export function useDrawer() {
+export function useDrawer(messages) {
   const showHistoryMenu = ref(false)
   const selectedHistoryIdx = ref(null)
-  const chatHistory = ref([
-    { title: '2024-04-25 Morning', time: '09:21', messages: [{ sender: 'user', text: '你好' }, { sender: 'ai', text: '哈囉！有什麼可以幫您？' }] },
-    { title: '2024-04-24 Afternoon', time: '15:02', messages: [{ sender: 'user', text: '今天天氣？' }, { sender: 'ai', text: '晴時多雲' }] }
-  ])
+  const chatHistory = ref([])
 
   const menuIdx = ref(null) // Menu index for context actions
   const editIdx = ref(null) // Edit index for renaming
@@ -20,9 +17,11 @@ export function useDrawer() {
   function closeHistoryMenu() { showHistoryMenu.value = false; closeMenu() }
   function selectHistory(idx) {
     if (editIdx.value !== null || menuIdx.value !== null) return
-    messages.value = [...chatHistory.value[idx].messages]
-    selectedHistoryIdx.value = idx
-    closeHistoryMenu()
+    if (messages && messages.value && chatHistory.value && chatHistory.value[idx]) {
+      messages.value = [...chatHistory.value[idx].messages]
+      selectedHistoryIdx.value = idx
+      closeHistoryMenu()
+    }
   }
 
   function toggleMenu(idx) { 
