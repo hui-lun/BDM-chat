@@ -192,7 +192,7 @@ def chat(req: ChatRequest):
         text = response.message
     else:
         text = str(response)
-    return {"response": response}
+    return {"response": text}
 
 @app.get("/api/qa-history/{title}", response_model=QAHistoryResponse)
 async def get_qa_history(title: str):
