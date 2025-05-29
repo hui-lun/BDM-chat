@@ -30,8 +30,9 @@
             <template v-else>
               <input
                 class="drawer-rename-input"
-                v-model="renameTitle"
-                ref="renameInput"
+                :value="renameInput"
+                @input="$emit('update-rename-input', $event.target.value)"
+                ref="renameInputRef"
                 @keyup.enter="$emit('finish-rename', idx)"
                 @blur="$emit('finish-rename', idx)"
               />
@@ -58,11 +59,21 @@
           </svg>
         </div>
         <div class="delete-popover-title">確定要刪除此聊天紀錄嗎？</div>
+        <div class="delete-popover-subtitle">此操作無法復原，紀錄將永久刪除</div>
         <div class="delete-popover-actions">
-          <button class="delete-popover-btn danger" @click="$emit('confirm-delete')">確定</button>
+          <button class="delete-popover-btn danger" @click="$emit('confirm-delete')">
+            <span class="delete-icon">🗑️</span> 確定刪除
+          </button>
           <button class="delete-popover-btn" @click="$emit('close-delete')">取消</button>
         </div>
       </div>
+    </div>
+  </teleport>
+  
+  <!-- Delete Success Toast -->
+  <teleport to="body">
+    <div v-if="showDeleteSuccess" class="delete-success-toast">
+      <span class="success-icon">✓</span> 聊天紀錄已成功刪除
     </div>
   </teleport>
 </template>
@@ -73,13 +84,77 @@ const props = defineProps({
   show: Boolean,
   history: Array,
   showDeleteModal: Boolean,
+  showDeleteSuccess: Boolean,
   deletePopoverPos: Object,
   deletePopoverStyle: Object,
   menuIdx: Number,              
-  editIdx: Number,     
+  editIdx: Number,
+  selectedHistoryIdx: Number,
   renameInput: {
-    type: Object,
-    default: null
+    type: String,
+    default: ''
   } 
 })
+
+defineEmits(['close', 'select', 'toggle-menu', 'start-rename', 'finish-rename', 'update-rename-input', 'open-delete-modal', 'close-delete', 'confirm-delete'])
 </script>
+
+<style scoped>
+.delete-popover-subtitle {
+  font-size: 0.85rem;
+  color: #666;
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.delete-icon {
+  display: inline-block;
+  margin-right: 4px;
+}
+
+.delete-success-toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #4caf50;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  animation: fadeInOut 3s ease-in-out forwards;
+}
+
+.success-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  background-color: white;
+  color: #4caf50;
+  border-radius: 50%;
+  margin-right: 8px;
+  font-weight: bold;
+}
+
+@keyframes fadeInOut {
+  0% { opacity: 0; transform: translate(-50%, 20px); }
+  15% { opacity: 1; transform: translate(-50%, 0); }
+  85% { opacity: 1; transform: translate(-50%, 0); }
+  100% { opacity: 0; transform: translate(-50%, -20px); }
+}
+
+.delete-popover-btn.danger {
+  background-color: #e74c3c;
+  color: white;
+  font-weight: 500;
+}
+
+.delete-popover-btn.danger:hover {
+  background-color: #c0392b;
+}
+</style>

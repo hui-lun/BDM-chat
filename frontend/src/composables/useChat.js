@@ -8,6 +8,7 @@ export function useChat(chatHistory) {
   const isLoading = ref(false)
   const useAgent = ref(true)
   const currentMailInfo = ref(null)  // Store current mail info
+  const activeChatId = ref(null)  // Track the active chat ID to prevent duplicate history entries
   let controller = null
   const chatBody = ref(null)
 
@@ -32,6 +33,26 @@ export function useChat(chatHistory) {
         return null;
       }
       
+      // If we have an active chat ID, update that chat instead of creating a new one
+      if (activeChatId.value) {
+        // Find the index of the active chat in the history
+        const activeIdx = chatHistory.value.findIndex(chat => chat.id === activeChatId.value);
+        
+        if (activeIdx !== -1) {
+          // Update the existing chat with the current messages
+          chatHistory.value[activeIdx].messages = [...messages.value];
+          console.log('Updated existing chat in history:', chatHistory.value[activeIdx]);
+          
+          // Save the updated history to localStorage if available
+          if (typeof localStorage !== 'undefined' && typeof saveHistoryToLocalStorage === 'function') {
+            saveHistoryToLocalStorage();
+          }
+          
+          return chatHistory.value[activeIdx];
+        }
+      }
+      
+      // If no active chat or active chat not found, create a new one
       const now = new Date();
       const timeString = now.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
       const dateString = now.toISOString().split('T')[0];
@@ -46,9 +67,18 @@ export function useChat(chatHistory) {
         createdAt: now.toISOString()
       };
       
+      // Set this as the active chat
+      activeChatId.value = newChat.id;
+      
       // Add to history
       chatHistory.value.unshift(newChat);
-      console.log('Saved chat to history:', newChat);
+      console.log('Saved new chat to history:', newChat);
+      
+      // Save the updated history to localStorage if available
+      if (typeof localStorage !== 'undefined' && typeof saveHistoryToLocalStorage === 'function') {
+        saveHistoryToLocalStorage();
+      }
+      
       return newChat;
     } catch (error) {
       console.error('Error saving chat history:', error);
@@ -174,6 +204,8 @@ export function useChat(chatHistory) {
   const clearMessages = () => {
     messages.value = []
     currentMailInfo.value = null
+    // Reset the active chat ID when clearing messages
+    activeChatId.value = null
   }
 
   return {
@@ -182,9 +214,11 @@ export function useChat(chatHistory) {
     isLoading,
     useAgent,
     chatBody,
+    activeChatId,
     sendQuery,
     stopGenerating,
     scrollToBottom,
-    clearMessages
+    clearMessages,
+    saveToHistory
   }
 }

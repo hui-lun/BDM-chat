@@ -15,10 +15,13 @@
       :show="showHistoryMenu"
       :history="chatHistory"
       :show-delete-modal="showDeleteModal"
+      :show-delete-success="showDeleteSuccess"
       :delete-popover-pos="deletePopoverPos"
       :delete-popover-style="deletePopoverStyle"
       :menu-idx="menuIdx"               
-      :edit-idx="editIdx"               
+      :edit-idx="editIdx"
+      :selected-history-idx="selectedHistoryIdx"
+      :rename-input="renameTitle"
       @select="selectHistory"
       @close="closeHistoryMenu"
       @close-delete="closeDeleteModal"
@@ -26,6 +29,7 @@
       @toggle-menu="toggleMenu"
       @start-rename="startRename"
       @finish-rename="finishRename"
+      @update-rename-input="updateRenameInput"
     />
 
     <!-- Q&A History Sidebar -->
@@ -94,10 +98,12 @@ const {
   isLoading,
   useAgent,
   chatBody,
+  activeChatId: chatActiveChatId,
   sendQuery,
   stopGenerating,
   scrollToBottom,
-  clearMessages
+  clearMessages,
+  saveToHistory
 } = useChat(chatHistory)
 
 // ====== Drawer Management (composable) ======
@@ -110,24 +116,41 @@ const {
   renameTitle,
   renameInput,
   showDeleteModal,
+  showDeleteSuccess,
   deletePopoverPos,
   deletePopoverStyle,
+  activeChatId: drawerActiveChatId,
   openHistoryMenu,
   closeHistoryMenu,
   selectHistory,
   toggleMenu,
   closeMenu,
   startRename,
+  updateRenameInput,
   finishRename,
   openDeleteModal,
   closeDeleteModal,
-  doDeleteHistory
+  doDeleteHistory,
+  saveHistoryToLocalStorage
 } = useDrawer(messages)
 
 // Sync chatHistory between composables
 watch(chatHistory, (newVal) => {
   if (drawerChatHistory && drawerChatHistory.value !== newVal) {
     drawerChatHistory.value = newVal;
+  }
+}, { deep: true, immediate: true })
+
+// Sync activeChatId between useChat and useDrawer
+watch(drawerActiveChatId, (newVal) => {
+  if (chatActiveChatId && chatActiveChatId.value !== newVal) {
+    chatActiveChatId.value = newVal;
+  }
+}, { deep: true, immediate: true })
+
+watch(chatActiveChatId, (newVal) => {
+  if (drawerActiveChatId && drawerActiveChatId.value !== newVal) {
+    drawerActiveChatId.value = newVal;
   }
 }, { deep: true, immediate: true })
 
@@ -255,8 +278,15 @@ function closeMenuOnOutside(e) {
 }
 
 const handleButtonClick = async () => {
-  if (isLoading.value) stopGenerating()
-  else await sendQuery()
+  if (isLoading.value) {
+    stopGenerating()
+  } else {
+    await sendQuery()
+    // If we're not continuing an existing chat, save to history
+    if (!chatActiveChatId.value && messages.value.length > 0) {
+      saveToHistory()
+    }
+  }
 }
 
 </script>
