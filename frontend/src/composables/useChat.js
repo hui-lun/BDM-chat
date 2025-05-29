@@ -25,13 +25,24 @@ export function useChat() {
     if (mailInfo) {
       // Format email info as a string
       currentMailInfo.value = mailInfo  // Save mailInfo
-      userMsg = `Subject: ${mailInfo.title}
-      From: ${mailInfo.customer}
-      To: ${mailInfo.BDM}
-      Date: ${mailInfo.dateTime}
+      mailInfo.body = mailInfo.body.replaceAll('\r\n\r\n', '\r\n')
+      // userMsg = `Subject: ${mailInfo.title}
+      // From: ${mailInfo.customer}
+      // To: ${mailInfo.BDM}
+      // Date: ${mailInfo.dateTime}
 
-      ${mailInfo.body.trim()}`
+      // ${mailInfo.body.trim()}`
+      userMsg = [
+        `Subject: ${mailInfo.title}`,
+        `From: ${mailInfo.customer}`,
+        `To: ${mailInfo.BDM}`,
+        `Date: ${mailInfo.dateTime}`,
+        '',
+        `${mailInfo.body.trim()}`
+      ].join('\n');
+
       messages.value.push({ sender: 'user', text: userMsg })
+      console.log(mailInfo)
     } else {
       if (!query.value.trim()) return
       userMsg = query.value
@@ -84,7 +95,11 @@ export function useChat() {
           mailInfo: isEmail ? currentMailInfo.value : null
         }
       } else {
+        console.time("chatRequest")
+        console.log("start to post")
         res = await axios.post('/chat', { query: userMsg }, { signal: controller.signal })
+        console.log("get answer")
+        console.timeEnd("chatRequest")
         messages.value[messages.value.length - 1] = { sender: 'ai', text: res.data.response }
       }
     } catch (e) {

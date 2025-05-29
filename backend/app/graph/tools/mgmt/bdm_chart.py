@@ -1,23 +1,12 @@
-import re
 import requests
+from .enums import PeriodType, PERIOD_MAPPING
 from datetime import datetime
-from enum import Enum
-from typing import Dict, Any, Optional, List, Union
-from .bdm_chat import BDM_API_BASE
-
-# BDM API endpoint configuration
-# BDM_API_BASE = "http://192.168.1.167:8000"  # Same base URL as in bdm_chat.py
-
-class PeriodType(str, Enum):
-    """Enum for different time period types"""
-    WEEK = "week"
-    MONTH = "month"
-    QUARTER = "quarter"
-    YEAR = "year"
+from typing import Dict, Any, Optional
+from .bdm_chat import BDM_API_BASE, extract_bdm_name
 
 def get_bdm_chart(
     bdm_name: str,
-    period_type: PeriodType = PeriodType.WEEK,
+    period_type: PeriodType,
     start_date: Optional[datetime] = None
 ) -> Dict[str, Any]:
     """
@@ -46,7 +35,6 @@ def get_bdm_chart(
         print("[DEBUG] Sending request to BDM API...")
         
         response = requests.get(url, params=params, timeout=30)
-        # print("[DEBUG] Sending this")
         response.raise_for_status()
         
         # Check if response contains data
@@ -107,36 +95,11 @@ def get_bdm_chart_response(query: str) -> Dict[str, Any]:
                 "response": "No chart-related query detected",
                 "should_skip": True
             }
-        
-        # Extract BDM name from query
-        bdm_match = re.search(
-            r'(?:bdm[\s:]*)?([a-z]+\.[a-z]+)|show\s+me\s+([a-z]+\.[a-z]+)', 
-            query_lower
-        )
-        
-        # Set default values
-        bdm_name = "gary.yccheng"  # Default BDM name
-        period_type = PeriodType.WEEK  # Default period type
-        
-        # Extract BDM name if found
-        if bdm_match:
-            bdm_name = bdm_match.group(1) or bdm_match.group(2) or bdm_name
-        
-        # Map period type keywords to PeriodType enum
-        period_map = {
-            'month': PeriodType.MONTH,
-            'quarter': PeriodType.QUARTER,
-            'year': PeriodType.YEAR,
-            'this month': PeriodType.MONTH,
-            'this quarter': PeriodType.QUARTER,
-            'this year': PeriodType.YEAR,
-            'monthly': PeriodType.MONTH,
-            'quarterly': PeriodType.QUARTER,
-            'yearly': PeriodType.YEAR
-        }
-        
+
+        bdm_name = extract_bdm_name(query)
+        period_type = PeriodType.WEEK
         # Find period type in query
-        for period_key, period_value in period_map.items():
+        for period_key, period_value in PERIOD_MAPPING.items():
             if period_key in query_lower:
                 period_type = period_value
                 break
@@ -154,7 +117,7 @@ def get_bdm_chart_response(query: str) -> Dict[str, Any]:
             # Ensure chart data is not empty
             if not chart_data:
                 raise ValueError("Empty chart data")
-
+                
             return {
                 "chart_data": chart_data,
                 "content_type": content_type,

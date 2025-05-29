@@ -1,0 +1,20 @@
+[ req ]
+default_bits       = 2048
+prompt             = no
+default_md         = sha256
+distinguished_name = dn
+req_extensions     = req_ext
+
+[ dn ]
+C  = TW
+ST = Taiwan
+L  = Taipei
+O  = BDM.agent
+CN = 192.168.1.193
+
+[ req_ext ]
+subjectAltName = @alt_names
+
+[ alt_names ]
+IP.1 = 192.168.1.193
+DNS.1 = bdm-agent.local

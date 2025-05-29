@@ -113,7 +113,8 @@
           <bt:Image id="icon80" DefaultValue="https://officedev.github.io/Office-Add-in-samples/Samples/hello-world/outlook-hello-world/assets/icon-80.png"/>
         </bt:Images>
         <bt:Urls>
-          <bt:Url id="chatbotPane" DefaultValue="https://841f-59-124-2-11.ngrok-free.app/"/>
+          <!-- <bt:Url id="chatbotPane" DefaultValue="https://841f-59-124-2-11.ngrok-free.app/"/> -->
+          <bt:Url id="chatbotPane" DefaultValue="https://192.168.1.193:8443/"/>
         </bt:Urls>
         <bt:ShortStrings>
           <bt:String id="groupLabel" DefaultValue="Chatbot"/>
@@ -127,7 +128,7 @@
       </Resources>
 
       <!-- test -->
-      <WebApplicationInfo>
+      <!-- <WebApplicationInfo>
         <Id>e4cd9ba7-9a55-459c-8bfb-ef83d4f725a4</Id>
         <Resource>api://841f-59-124-2-11.ngrok-free.app/e4cd9ba7-9a55-459c-8bfb-ef83d4f725a4</Resource>
         <Scopes>
@@ -137,7 +138,7 @@
           <Scope>Mail.ReadWrite</Scope>
           <Scope>Offline_access</Scope>
         </Scopes>
-      </WebApplicationInfo>
+      </WebApplicationInfo> -->
     </VersionOverrides>
   </VersionOverrides>
 </OfficeApp>

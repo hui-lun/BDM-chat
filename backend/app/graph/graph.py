@@ -130,6 +130,17 @@ def web_analyze(state: AgentState):
         "next_node": END
     }
 
+
+def llm_answer(state: AgentState):
+    print("[llm_answer] called")
+    response = llm.invoke(state["agent_query"])
+    print(response)
+    return {
+        "summary": response.content,
+        "next_node": END
+    }
+
+
 def manage(state: AgentState):
     print("[manage] called")
     query = state["agent_query"]
@@ -139,21 +150,21 @@ def manage(state: AgentState):
         # Get the raw result from get_manage_data
         result = get_manage_data.invoke(query)
         # Convert the result to a string that can be displayed in the frontend
-        if isinstance(result, dict) and 'response' in result:
+        if isinstance(result, dict) and 'response' in result :
+            print('go 1111')
             # If the result already has a 'response' field (from get_bdm_response)
             response_text = result['response']
-            # print(f'res1:{response_text}')
-            data = json.loads(response_text)
+            data = response_text
+            if not ('"type": "chart"' in str(response_text)):
+                    print("Not a chart response, formatting data...")
+                    response_text = pretty_print_projects(data)
             # response_text = pretty_print_projects(data)
-            # print(f'res2:{response_text}')
             print("go 1")
         else:
             # Otherwise, convert the result to a JSON string
             response_text = json.dumps(result, ensure_ascii=False, indent=2)
-            print(f'res12:{response_text}')
             data = json.loads(response_text)
             response_text = pretty_print_projects(data)
-            print(f'res22:{response_text}')
             print("go 2")
         print(f"Sending response to frontend: {response_text}...")
         
@@ -166,8 +177,7 @@ def manage(state: AgentState):
         error_msg = f"Error processing BDM query: {str(e)}"
         print(error_msg)
         return {
-            "summary": error_msg,
-            "next_node": END
+            "next_node": "llm_answer"
         }
 
 
@@ -176,6 +186,7 @@ graph = StateGraph(AgentState)
 graph.add_node("select_tool", select_tool)
 graph.add_node("spec_search", spec_search)
 graph.add_node("web_analyze", web_analyze)
+graph.add_node("llm_answer", llm_answer)
 graph.add_node("manage", manage)
 
 graph.set_entry_point("select_tool")
@@ -187,6 +198,11 @@ graph.add_conditional_edges(
 
 graph.add_conditional_edges(
     "spec_search",
+    lambda state: state["next_node"]
+)
+
+graph.add_conditional_edges(
+    "manage",
     lambda state: state["next_node"]
 )
 
