@@ -21,7 +21,7 @@ def connect_mongo():
     return client
 
 #----------global variable----------#
-PROXY_SERVER = "http://10.1.8.5:5000/favicon.ico"
+PROXY_SERVER = os.getenv('PROXY_SERVER')
 DB_NAME = "product_specification"
 BAREBONE_COLLECTION_NAME = "server_spec_barebone"
 
@@ -267,7 +267,7 @@ def search_database(query: str) -> str:
         return "database not found this server"
 
 def analyze_key(question):
-    if "qvl" not in question:
+    if "qvl" not in question.lower():
         field_lookup = spec_field_lookup
     else:
         field_lookup = qvl_field_lookup
@@ -290,38 +290,6 @@ def analyze_key(question):
 def summarize_result(model,data_list):
     result = clean_spec(model,data_list)
     return result
-    
-
-def clean_qvl(model,data_list):
-    if not data_list:
-        return "No data."
-
-    result = ""
-    for item in data_list:
-        for key, details in item.items():
-            if '>>>' in key and '_' in key:
-                base_key = key.split('_')[0] 
-                number = key.split('_')[1]   
-            elif '_' in key:
-                base_key = key.split('_')[0] 
-                number = key.split('_')[1]   
-            else:
-                base_key = key
-                number = ""
-
-            header = f"{base_key} #{number}" if number else base_key
-            result += f"{header}\n"
-            for k, v in details.items():
-                if v is None or v == '':
-                    continue
-                if isinstance(v, list):
-                    joined = ", ".join(str(i) for i in v)
-                    result += f"- {k}: {joined}\n"
-                else:
-                    result += f"- {k}: {v}\n"
-            result += "\n"
-    return result
-
 
 def clean_spec(model,data_list):
     if not data_list:
@@ -366,8 +334,8 @@ def clean_spec(model,data_list):
                         result += f"  - {k} : {joined}\n"
                 else:
                     result += f"  - {k} : {v}\n"
-
-    for key, details in data_list[1].items():
+    num = 1
+    for key, details in data_list[1].items():  
         if '>>>' in key and '_' in key:
             base_key = key.split('_')[0] 
             number = key.split('_')[1]   
@@ -378,7 +346,8 @@ def clean_spec(model,data_list):
             base_key = key
             number = ""
 
-        header = f"{base_key} #{number}" if number else base_key
+        header = f"{base_key} #{num}" if number else base_key
+        num += 1
         result += f"- {header}\n"
         for k, v in details.items():
             if v is None or v == '':

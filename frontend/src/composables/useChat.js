@@ -94,12 +94,7 @@ export function useChat(chatHistory) {
       // Format email info as a string
       currentMailInfo.value = mailInfo  // Save mailInfo
       mailInfo.body = mailInfo.body.replaceAll('\r\n\r\n', '\r\n')
-      // userMsg = `Subject: ${mailInfo.title}
-      // From: ${mailInfo.customer}
-      // To: ${mailInfo.BDM}
-      // Date: ${mailInfo.dateTime}
 
-      // ${mailInfo.body.trim()}`
       userMsg = [
         `Subject: ${mailInfo.title}`,
         `From: ${mailInfo.customer}`,
@@ -131,12 +126,12 @@ export function useChat(chatHistory) {
         const responseData = res.data.summary || res.data.response || ''
         let parsedResponse = {}
         try {
-          // 嘗試解析 JSON 字符串
+          // analyze json string
           parsedResponse = typeof responseData === 'string' ? 
                           JSON.parse(responseData) : 
                           responseData
         } catch (e) {
-          // 如果不是 JSON，則當作普通文本處理
+          // if it's not json, take it as a normal text
           parsedResponse = { 
             type: 'text', 
             message: responseData 
@@ -149,7 +144,7 @@ export function useChat(chatHistory) {
             chartData: {
               imageUrl: parsedResponse.chart_data,
               contentType: parsedResponse.content_type || 'image/png',
-              cleanup: () => {}  // 不需要清理，因為是 base64 數據
+              cleanup: () => {}  
             }
           }
           return

@@ -59,7 +59,7 @@ from .graph.graph import app as agent_graph_app, AgentState
 
 from .graph.tools.email.mail_summarize import process_email
 
-#For Bill
+# format for mongoDB
 def mail_format_database(email_info: dict) -> dict:
     """
     將 email_info 格式轉換成標準格式：
@@ -82,9 +82,9 @@ def mail_format_database(email_info: dict) -> dict:
         datetime_str = dt.strftime("%Y/%-m/%-d %-I:%M %p")
     except Exception as e:
         print(f"[convert_email_info] 日期格式錯誤: {e}")
-        datetime_str = raw_date  # fallback 原始字串
+        datetime_str = raw_date  # fallback raw date
 
-    # 組合格式
+    # all format
     email = {
         "Title": title,
         "Company Name": company_name,
@@ -148,7 +148,7 @@ def agent_chat(req: AgentChatRequest):
         email_info = parse_email_query(query)
         print("Parsed email info:", email_info)
 
-        #FOR Bill
+        # format for mongoDB
         email = mail_format_database(email_info)
         print("email_info_bill:",email)
         thread_id_db = process_email_to_mongo(email)

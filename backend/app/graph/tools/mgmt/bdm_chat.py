@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Dict, Any, List, Optional, Union
 from dataclasses import dataclass
 from .enums import process_item, PeriodType, PERIOD_MAPPING
+from dateutil.relativedelta import relativedelta
 import requests
 
 # Configure logging
@@ -13,7 +14,6 @@ logger = logging.getLogger(__name__)
 
 # API Configuration
 BDM_API_BASE = "http://192.168.1.167:8000"
-API_TIMEOUT = 40  # seconds
 
 # Field order for response
 RESPONSE_FIELDS = [
@@ -47,27 +47,48 @@ def extract_bdm_name(query: str) -> Optional[str]:
         query: User's input query
         
     Returns:
-        str: Extracted BDM name or None if not found
+        str: Extracted BDM name in correct format (with Chinese name if available)
     """
+    BDM_NORMALIZATION = {
+        'jo.wang': 'Jo.Wang (王俞喬)',
+        'jo': 'Jo.Wang (王俞喬)',
+    }
+    
     full_name_pattern = r'[\s:]([A-Za-z]+\.[A-Za-z]+\s*\([^)]+\))'
     match = re.search(full_name_pattern, query)
     if match:
         bdm_name = match.group(1).strip()
-        return bdm_name  
+        normalized = re.sub(r'\s*\(\s*', ' (', bdm_name)
+        normalized = re.sub(r'\s*\)', ')', normalized)
+        
+        bdm_key = normalized.split(' ')[0].lower()
+        return BDM_NORMALIZATION.get(bdm_key, normalized)
     
     bdm_patterns = [
         r'[\s:]([A-Za-z]+\.[A-Za-z]+)',  
-        r'[\s:]([A-Za-z]{3,})'           
+        r'[\s:]([A-Za-z]{2,})'           
     ]
     
-    excluded_terms = {'week', 'month', 'quarter', 'year', 'data', 'report', 'for', 'about'}
+    excluded_terms = {
+        'week', 'month', 'quarter', 'year', 
+        'data', 'report', 'for', 'about', 
+        'show', 'get', 'me', 'the', 'and',
+        'chart', 'graph', 'of', 'in', 'on'
+    }
     
     for pattern in bdm_patterns:
-        match = re.search(pattern, query, re.IGNORECASE)
-        if match:
+        matches = re.finditer(pattern, query, re.IGNORECASE)
+        for match in matches:
             bdm_name = match.group(1).strip()
-            if bdm_name.lower() not in excluded_terms:
-                return bdm_name.lower()
+            bdm_lower = bdm_name.lower()
+            
+            if bdm_lower in excluded_terms:
+                continue
+                
+            if bdm_lower in BDM_NORMALIZATION:
+                return BDM_NORMALIZATION[bdm_lower]
+            
+            return bdm_lower  
     return None
 
 def extract_period(query: str) -> PeriodType:
@@ -140,15 +161,28 @@ def fetch_bdm_data(bdm_name: str, period_type: str) -> Dict[str, Any]:
         Dict containing API response data
     """
     url = f"{BDM_API_BASE}/bdm/updates/"
+    # ======== for demo ========
+    month_ago = (datetime.now() - relativedelta(months=1)).strftime('%Y-%m-%dT%H:%M:%S')
+    current_date = datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
 
     params = {
         'period_type': period_type,
         'bdm': bdm_name,
-        'start_date': datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
+        'start_date': current_date  # default is the time now
     }
+
+    if bdm_name != "Jo.Wang (王俞喬)" and period_type != 'week':
+        params['start_date'] = month_ago
+    # ======== for demo ========
+    # params = {
+    #     'period_type': period_type,
+    #     'bdm': bdm_name,
+    #     'start_date': may_date
+    #     # 'start_date': datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
+    # }
     try:
         logger.info(f"Fetching BDM data from {url} with params: {params}")
-        response = requests.get(url, params=params, timeout=API_TIMEOUT)
+        response = requests.get(url, params=params, timeout=40)
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException as e:

@@ -3,6 +3,7 @@ from .enums import PeriodType, PERIOD_MAPPING
 from datetime import datetime
 from typing import Dict, Any, Optional
 from .bdm_chat import BDM_API_BASE, extract_bdm_name
+from dateutil.relativedelta import relativedelta
 
 def get_bdm_chart(
     bdm_name: str,
@@ -25,9 +26,16 @@ def get_bdm_chart(
         
         # Prepare request parameters
         params = {"period_type": period_type.value}
-        if start_date:
-            params["start_date"] = start_date.isoformat()
         
+        # ======== for demo ========
+        month_ago = (datetime.now() - relativedelta(months=1)).strftime('%Y-%m-%dT%H:%M:%S')
+        current_date = datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
+
+        params["start_date"] = current_date if bdm_name == "Jo.Wang (王俞喬)" or period_type == 'week' else month_ago
+        # ======== for demo ========
+        # if start_date:
+        #     params["start_date"] = start_date.isoformat()
+
         # Make API request
         url = f"{BDM_API_BASE}/bdm/status-chart/{bdm_name}"
         print(f"[DEBUG] Request URL: {url}")

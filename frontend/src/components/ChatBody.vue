@@ -65,7 +65,7 @@ onUpdated(() => {
   word-wrap: break-word;
 }
 
-/* 圖表容器樣式 */
+/* chart of container */
 .chart-container {
   margin: 10px 0;
   max-width: 100%;

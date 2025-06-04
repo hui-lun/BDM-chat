@@ -37,9 +37,9 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'send-message', 'update:useAgent'])
 
 const inputValue = ref(props.modelValue || '')
-const useAgentLocal = ref(props.useAgent ?? false)  // 預設 false，避免 null
+const useAgentLocal = ref(props.useAgent ?? false)  // default is false, avoiding null
 
-// 同步 useAgent 到父層
+// Sync useAgent to the parent component
 watch(useAgentLocal, (val) => {
   console.log('[DEBUG] emit update:useAgent', val)
   emit('update:useAgent', val)
@@ -74,7 +74,7 @@ function handleEnter(e) {
   }
 }
 
-// 調整大小相關邏輯
+// resize height of footer
 const footer = ref(null)
 const { startResize } = useResize(footer, { minHeight: 60 })
 </script>
