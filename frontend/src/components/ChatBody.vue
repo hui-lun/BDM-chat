@@ -6,11 +6,9 @@
           <span></span><span></span><span></span>
         </div>
         
-
         <div v-if="msg.chartData" class="chart-container">
           <img :src="msg.chartData.imageUrl" alt="BDM 狀態圖表" class="chart-image" />
         </div>
-
 
         <div v-else>
           <div class="message-text" v-html="msg.text"></div>
@@ -71,5 +69,32 @@ onUpdated(() => {
   max-width: 100%;
   overflow: hidden;
 }
+
+.typing-indicator {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  height: 20px;
+}
+
+.typing-indicator span {
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  background-color: #666;
+  border-radius: 50%;
+  margin: 0 2px;
+  animation: typing 1s infinite ease-in-out;
+}
+
+.typing-indicator span:nth-child(1) { animation-delay: 0.2s; }
+.typing-indicator span:nth-child(2) { animation-delay: 0.3s; }
+.typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typing {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
 
 </style>

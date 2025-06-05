@@ -86,76 +86,80 @@ export function useChat(chatHistory) {
     }
   }
 
-  const sendMessage = async (userMsg) => {
-    if (!userMsg.trim()) return
+  // Support mailInfo object structure
+  const sendQuery = async (mailInfo = null) => {
+    let userMsg
+    console.log('[DEBUG] useAgent:', useAgent.value)
+    if (mailInfo) {
+      // Format email info as a string
+      currentMailInfo.value = mailInfo  // Save mailInfo
+      mailInfo.body = mailInfo.body.replaceAll('\r\n\r\n', '\r\n')
 
-    messages.value.push({ sender: 'user', text: userMsg })
-    messages.value.push({ sender: 'ai', text: '' })  // Initialize empty AI message
-    isLoading.value = true  // Set loading state
+      userMsg = [
+        `Subject: ${mailInfo.title}`,
+        `From: ${mailInfo.customer}`,
+        `To: ${mailInfo.BDM}`,
+        `Date: ${mailInfo.dateTime}`,
+        '',
+        `${mailInfo.body.trim()}`
+      ].join('\n');
 
+      messages.value.push({ sender: 'user', text: userMsg })
+      console.log(mailInfo)
+    } else {
+      if (!query.value.trim()) return
+      userMsg = query.value
+      userMsg = query.value.replace(/<br>/g, '\n')
+      messages.value.push({ sender: 'user', text: query.value })
+      query.value = ''
+    }
+    // Initial loading state
+    messages.value.push({ sender: 'ai', loading: true })
+  
+    isLoading.value = true
+  
     try {
       controller = new AbortController()
       let res
       if (useAgent.value) {
-        console.time("agentChatRequest")
-        console.log("start to post agent chat")
-        
-        // Use fetch for streaming
-        const response = await fetch('/agent-chat', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ agent_query: userMsg }),
-          signal: controller.signal
-        })
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`)
-        }
-
-        const reader = response.body.getReader()
-        const decoder = new TextDecoder()
-        let aiResponse = ''
-        let isEmail = false
-
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
-          
-          const chunk = decoder.decode(value)
-          const lines = chunk.split('\n')
-          
-          for (const line of lines) {
-            if (!line.trim()) continue
-            try {
-              const data = JSON.parse(line)
-              if (data.error) {
-                throw new Error(data.error)
-              }
-              if (data.token) {
-                aiResponse += data.token
-                isEmail = data.from_email || false
-                // Update the last message with the accumulated response
-                messages.value[messages.value.length - 1] = { 
-                  sender: 'ai', 
-                  text: aiResponse,
-                  isEmail,
-                  mailInfo: isEmail ? currentMailInfo.value : null
-                }
-              }
-            } catch (e) {
-              console.error('Error parsing streaming response:', e)
-            }
+        res = await axios.post('/agent-chat', { agent_query: userMsg }, { signal: controller.signal })
+        // Handle agent chat response as before
+        const responseData = res.data.summary || res.data.response || ''
+        let parsedResponse = {}
+        try {
+          parsedResponse = typeof responseData === 'string' ? 
+                          JSON.parse(responseData) : 
+                          responseData
+        } catch (e) {
+          parsedResponse = { 
+            type: 'text', 
+            message: responseData 
           }
         }
-        
-        console.timeEnd("agentChatRequest")
+        if (parsedResponse.type === 'chart' && parsedResponse.chart_data) {
+          messages.value[messages.value.length - 1] = {
+            sender: 'ai',
+            text: parsedResponse.message,
+            chartData: {
+              imageUrl: parsedResponse.chart_data,
+              contentType: parsedResponse.content_type || 'image/png',
+              cleanup: () => {}  
+            }
+          }
+          return
+        }
+        const isEmail = res.data.from_email === true
+        messages.value[messages.value.length - 1] = { 
+          sender: 'ai', 
+          text: res.data.summary, 
+          isEmail,
+          mailInfo: isEmail ? currentMailInfo.value : null
+        }
       } else {
+        // Handle streaming chat response
         console.time("chatRequest")
         console.log("start to post")
         
-        // Use fetch for streaming
         const response = await fetch('/chat', {
           method: 'POST',
           headers: {
@@ -171,15 +175,16 @@ export function useChat(chatHistory) {
 
         const reader = response.body.getReader()
         const decoder = new TextDecoder()
-        let aiResponse = ''
+        let accumulatedText = ''
+        let isFirstToken = true
 
         while (true) {
           const { done, value } = await reader.read()
           if (done) break
-          
+
           const chunk = decoder.decode(value)
           const lines = chunk.split('\n')
-          
+
           for (const line of lines) {
             if (!line.trim()) continue
             try {
@@ -188,11 +193,18 @@ export function useChat(chatHistory) {
                 throw new Error(data.error)
               }
               if (data.token) {
-                aiResponse += data.token
-                // Update the last message with the accumulated response
-                messages.value[messages.value.length - 1] = { 
-                  sender: 'ai', 
-                  text: aiResponse 
+                accumulatedText += data.token
+                // On first token, remove loading state
+                if (isFirstToken) {
+                  isFirstToken = false
+                  messages.value[messages.value.length - 1] = {
+                    sender: 'ai',
+                    text: accumulatedText,
+                    loading: false
+                  }
+                } else {
+                  // Just update the text
+                  messages.value[messages.value.length - 1].text = accumulatedText
                 }
               }
             } catch (e) {
@@ -200,26 +212,46 @@ export function useChat(chatHistory) {
             }
           }
         }
-        
+
+        console.log("get answer")
         console.timeEnd("chatRequest")
+        
+        // Final update
+        messages.value[messages.value.length - 1] = {
+          sender: 'ai',
+          text: accumulatedText,
+          loading: false
+        }
       }
-    } catch (error) {
-      if (error.name === 'AbortError') {
-        console.log('Request was aborted')
+    } catch (e) {
+      // Handle all stop generation cases in one place
+      if (e.name === 'AbortError' || axios.isCancel(e)) {
         messages.value[messages.value.length - 1] = { 
           sender: 'ai', 
-          text: '(已停止生成)' 
+          text: '(已停止生成)', 
+          loading: false 
         }
       } else {
-        console.error('Error:', error)
         messages.value[messages.value.length - 1] = { 
           sender: 'ai', 
-          text: 'Sorry, there was an error processing your request.' 
+          text: 'Error: ' + e.message, 
+          loading: false 
         }
       }
     } finally {
-      isLoading.value = false  // Reset loading state
-      controller = null
+      try {
+        isLoading.value = false
+        controller = null
+        
+        // Save to history after sending a message
+        if (messages.value && messages.value.length > 0) {
+          console.log('Attempting to save chat to history...')
+          const savedChat = saveToHistory()
+          console.log('Chat save result:', savedChat ? 'success' : 'failed')
+        }
+      } catch (error) {
+        console.error('Error in sendQuery finally block:', error)
+      }
     }
   }
 
@@ -245,7 +277,7 @@ export function useChat(chatHistory) {
     useAgent,
     chatBody,
     activeChatId,
-    sendMessage,
+    sendQuery,
     stopGenerating,
     scrollToBottom,
     clearMessages,

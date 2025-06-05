@@ -131,22 +131,17 @@ def web_analyze(state: AgentState):
     }
 
 
-async def llm_answer(state: AgentState):
+def llm_answer(state: AgentState):
     print("[llm_answer] called")
-    response = await llm.ainvoke(state["agent_query"])
+    response = llm.invoke(state["agent_query"])
     print(response)
-    
-    # Get the content and stream it
-    content = response.content if hasattr(response, "content") else str(response)
-    
-    # Return the content directly without any processing
     return {
-        "summary": content,
+        "summary": response.content,
         "next_node": END
     }
 
 
-async def manage(state: AgentState):
+def manage(state: AgentState):
     print("[manage] called")
     query = state["agent_query"]
     print(f"Processing BDM query: {query}")
@@ -155,14 +150,15 @@ async def manage(state: AgentState):
         # Get the raw result from get_manage_data
         result = get_manage_data.invoke(query)
         # Convert the result to a string that can be displayed in the frontend
-        if isinstance(result, dict) and 'response' in result:
+        if isinstance(result, dict) and 'response' in result :
             print('go 1111')
             # If the result already has a 'response' field (from get_bdm_response)
             response_text = result['response']
             data = response_text
             if not ('"type": "chart"' in str(response_text)):
-                print("Not a chart response, formatting data...")
-                response_text = pretty_print_projects(data)
+                    print("Not a chart response, formatting data...")
+                    response_text = pretty_print_projects(data)
+            # response_text = pretty_print_projects(data)
             print("go 1")
         else:
             # Otherwise, convert the result to a JSON string
