@@ -86,105 +86,140 @@ export function useChat(chatHistory) {
     }
   }
 
-  // Support mailInfo object structure
-  const sendQuery = async (mailInfo = null) => {
-    let userMsg
-    console.log('[DEBUG] useAgent:', useAgent.value)
-    if (mailInfo) {
-      // Format email info as a string
-      currentMailInfo.value = mailInfo  // Save mailInfo
-      mailInfo.body = mailInfo.body.replaceAll('\r\n\r\n', '\r\n')
+  const sendMessage = async (userMsg) => {
+    if (!userMsg.trim()) return
 
-      userMsg = [
-        `Subject: ${mailInfo.title}`,
-        `From: ${mailInfo.customer}`,
-        `To: ${mailInfo.BDM}`,
-        `Date: ${mailInfo.dateTime}`,
-        '',
-        `${mailInfo.body.trim()}`
-      ].join('\n');
+    messages.value.push({ sender: 'user', text: userMsg })
+    messages.value.push({ sender: 'ai', text: '' })  // Initialize empty AI message
+    isLoading.value = true  // Set loading state
 
-      messages.value.push({ sender: 'user', text: userMsg })
-      console.log(mailInfo)
-    } else {
-      if (!query.value.trim()) return
-      userMsg = query.value
-      userMsg = query.value.replace(/<br>/g, '\n')
-      messages.value.push({ sender: 'user', text: query.value })
-      query.value = ''
-    }
-    messages.value.push({ sender: 'ai', loading: true })
-  
-    isLoading.value = true
-  
     try {
       controller = new AbortController()
       let res
       if (useAgent.value) {
-        res = await axios.post('/agent-chat', { agent_query: userMsg }, { signal: controller.signal })
-        // add
-        const responseData = res.data.summary || res.data.response || ''
-        let parsedResponse = {}
-        try {
-          // analyze json string
-          parsedResponse = typeof responseData === 'string' ? 
-                          JSON.parse(responseData) : 
-                          responseData
-        } catch (e) {
-          // if it's not json, take it as a normal text
-          parsedResponse = { 
-            type: 'text', 
-            message: responseData 
-          }
+        console.time("agentChatRequest")
+        console.log("start to post agent chat")
+        
+        // Use fetch for streaming
+        const response = await fetch('/agent-chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ agent_query: userMsg }),
+          signal: controller.signal
+        })
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
         }
-        if (parsedResponse.type === 'chart' && parsedResponse.chart_data) {
-          messages.value[messages.value.length - 1] = {
-            sender: 'ai',
-            text: parsedResponse.message,
-            chartData: {
-              imageUrl: parsedResponse.chart_data,
-              contentType: parsedResponse.content_type || 'image/png',
-              cleanup: () => {}  
+
+        const reader = response.body.getReader()
+        const decoder = new TextDecoder()
+        let aiResponse = ''
+        let isEmail = false
+
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          
+          const chunk = decoder.decode(value)
+          const lines = chunk.split('\n')
+          
+          for (const line of lines) {
+            if (!line.trim()) continue
+            try {
+              const data = JSON.parse(line)
+              if (data.error) {
+                throw new Error(data.error)
+              }
+              if (data.token) {
+                aiResponse += data.token
+                isEmail = data.from_email || false
+                // Update the last message with the accumulated response
+                messages.value[messages.value.length - 1] = { 
+                  sender: 'ai', 
+                  text: aiResponse,
+                  isEmail,
+                  mailInfo: isEmail ? currentMailInfo.value : null
+                }
+              }
+            } catch (e) {
+              console.error('Error parsing streaming response:', e)
             }
           }
-          return
         }
-        // add
-        const isEmail = res.data.from_email === true
-        messages.value[messages.value.length - 1] = { 
-          sender: 'ai', 
-          text: res.data.summary, 
-          isEmail,
-          mailInfo: isEmail ? currentMailInfo.value : null
-        }
+        
+        console.timeEnd("agentChatRequest")
       } else {
         console.time("chatRequest")
         console.log("start to post")
-        res = await axios.post('/chat', { query: userMsg }, { signal: controller.signal })
-        console.log("get answer")
+        
+        // Use fetch for streaming
+        const response = await fetch('/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ query: userMsg }),
+          signal: controller.signal
+        })
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
+
+        const reader = response.body.getReader()
+        const decoder = new TextDecoder()
+        let aiResponse = ''
+
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          
+          const chunk = decoder.decode(value)
+          const lines = chunk.split('\n')
+          
+          for (const line of lines) {
+            if (!line.trim()) continue
+            try {
+              const data = JSON.parse(line)
+              if (data.error) {
+                throw new Error(data.error)
+              }
+              if (data.token) {
+                aiResponse += data.token
+                // Update the last message with the accumulated response
+                messages.value[messages.value.length - 1] = { 
+                  sender: 'ai', 
+                  text: aiResponse 
+                }
+              }
+            } catch (e) {
+              console.error('Error parsing streaming response:', e)
+            }
+          }
+        }
+        
         console.timeEnd("chatRequest")
-        messages.value[messages.value.length - 1] = { sender: 'ai', text: res.data.response }
       }
-    } catch (e) {
-      if (axios.isCancel(e)) {
-        messages.value[messages.value.length - 1] = { sender: 'ai', text: '(已停止生成)' }
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        console.log('Request was aborted')
+        messages.value[messages.value.length - 1] = { 
+          sender: 'ai', 
+          text: '(已停止生成)' 
+        }
       } else {
-        messages.value[messages.value.length - 1] = { sender: 'ai', text: 'Error: ' + e.message }
+        console.error('Error:', error)
+        messages.value[messages.value.length - 1] = { 
+          sender: 'ai', 
+          text: 'Sorry, there was an error processing your request.' 
+        }
       }
     } finally {
-      try {
-        isLoading.value = false;
-        controller = null;
-        
-        // Save to history after sending a message
-        if (messages.value && messages.value.length > 0) {
-          console.log('Attempting to save chat to history...');
-          const savedChat = saveToHistory();
-          console.log('Chat save result:', savedChat ? 'success' : 'failed');
-        }
-      } catch (error) {
-        console.error('Error in sendQuery finally block:', error);
-      }
+      isLoading.value = false  // Reset loading state
+      controller = null
     }
   }
 
@@ -210,7 +245,7 @@ export function useChat(chatHistory) {
     useAgent,
     chatBody,
     activeChatId,
-    sendQuery,
+    sendMessage,
     stopGenerating,
     scrollToBottom,
     clearMessages,

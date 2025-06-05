@@ -4,10 +4,15 @@ import os
 import msgpack
 from datetime import datetime
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from .email_to_db import process_email_to_mongo
 from pymongo import MongoClient
 from dotenv import load_dotenv
 import uuid
+import json
+import asyncio
+from typing import AsyncGenerator
+
 app = FastAPI()
 
 app.add_middleware(
@@ -136,63 +141,102 @@ def parse_email_query(query: str) -> dict:
     return email_info
 
 @app.post("/agent-chat")
-def agent_chat(req: AgentChatRequest):
-    # Parse email query if it looks like an email
-    query = req.agent_query
-    is_email = False
-    email_info = None
+async def agent_chat(req: AgentChatRequest):
+    async def generate() -> AsyncGenerator[str, None]:
+        try:
+            # Parse email query if it looks like an email
+            query = req.agent_query
+            is_email = False
+            email_info = None
+
+            if 'Subject:' in query:
+                is_email = True
+                email_info = parse_email_query(query)
+                print("Parsed email info:", email_info)
+
+                # format for mongoDB
+                email = mail_format_database(email_info)
+                print("email_info_bill:", email)
+                thread_id_db = process_email_to_mongo(email)
+                thread_id = thread_id_db["thread_id"]
+                config = {"configurable": {"thread_id": thread_id}}
+
+                # Use the pre-generated summary
+                print(email_info['summary'])
+                state = AgentState(agent_query=email_info['summary'], summary="")
+                result = agent_graph_app.invoke(state, config=config)
+            else:
+                thread_id = uuid.uuid4().hex[:8]
+                config = {"configurable": {"thread_id": thread_id}}
+                state = AgentState(agent_query=query, summary="")
+                result = agent_graph_app.invoke(state, config=config)
+
+            print("is_email", is_email)
+            
+            # Get the response text
+            response_text = result.get("summary", "")
+            
+            # Stream each character with a small delay
+            for char in response_text:
+                yield json.dumps({
+                    "token": char,
+                    "from_email": is_email
+                }) + "\n"
+                await asyncio.sleep(0.01)  # Small delay to make streaming visible
+                
+        except Exception as e:
+            error_msg = f"Error generating response: {str(e)}"
+            print(error_msg)
+            yield json.dumps({"error": error_msg}) + "\n"
     
-
-    if 'Subject:' in query:
-        is_email = True
-        email_info = parse_email_query(query)
-        print("Parsed email info:", email_info)
-
-        # format for mongoDB
-        email = mail_format_database(email_info)
-        print("email_info_bill:",email)
-        thread_id_db = process_email_to_mongo(email)
-        thread_id = thread_id_db["thread_id"]
-        config = {"configurable": {"thread_id": thread_id}}
-
-        # Use the pre-generated summary
-        print(email_info['summary'])
-        state = AgentState(agent_query=email_info['summary'], summary="")
-        result = agent_graph_app.invoke(state, config=config)
-    else:
-        thread_id = uuid.uuid4().hex[:8]
-        config = {"configurable": {"thread_id": thread_id}}
-        state = AgentState(agent_query=query, summary="")
-        result = agent_graph_app.invoke(state, config=config)
-    
-    print("is_email",is_email)
-
-    # Pass config only if it exists
-    # if config:
-    #     result = agent_graph_app.invoke(state, config=config)
-    # else:
-    #     result = agent_graph_app.invoke(state)
-    # print("result", result)
-    
-    return {
-        "summary": result.get("summary", ""),
-        "from_email": is_email
-    }
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+            "Content-Type": "text/event-stream"
+        }
+    )
 
 
 @app.post("/chat")
-def chat(req: ChatRequest):
-    response = llm.invoke(req.query)
-    # force convert to string, avoid [object Object]
-    if hasattr(response, "content"):
-        text = response.content
-    elif hasattr(response, "text"):
-        text = response.text
-    elif hasattr(response, "message"):
-        text = response.message
-    else:
-        text = str(response)
-    return {"response": text}
+async def chat(req: ChatRequest):
+    async def generate() -> AsyncGenerator[str, None]:
+        try:
+            # Get streaming response from LLM
+            response = await llm.ainvoke(req.query)
+            
+            # Handle different response types
+            if hasattr(response, "content"):
+                text = response.content
+            elif hasattr(response, "text"):
+                text = response.text
+            elif hasattr(response, "message"):
+                text = response.message
+            else:
+                text = str(response)
+            
+            # Stream each character with a small delay
+            for char in text:
+                yield json.dumps({"token": char}) + "\n"
+                await asyncio.sleep(0.01)  # Small delay to make streaming visible
+                
+        except Exception as e:
+            error_msg = f"Error generating response: {str(e)}"
+            print(error_msg)
+            yield json.dumps({"error": error_msg}) + "\n"
+    
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"
+        }
+    )
 
 @app.get("/api/qa-history/{title}", response_model=QAHistoryResponse)
 async def get_qa_history(title: str):

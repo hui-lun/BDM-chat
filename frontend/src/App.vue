@@ -100,7 +100,7 @@ const {
   useAgent,
   chatBody,
   activeChatId: chatActiveChatId,
-  sendQuery,
+  sendMessage,
   stopGenerating,
   scrollToBottom,
   clearMessages,
@@ -188,7 +188,7 @@ const {
   handleEmailChange,
   sendEmailContent,
   openDraftForm,
-} = useOutlook(showErrorMessage, query, sendQuery)
+} = useOutlook(showErrorMessage, query, sendMessage)
 
 console.log("initial loading:", loading.value)
 // ====== Initial setup when mounted ======
@@ -282,7 +282,8 @@ const handleButtonClick = async () => {
   if (isLoading.value) {
     stopGenerating()
   } else {
-    await sendQuery()
+    await sendMessage(query.value)
+    query.value = ''  // Clear the input after sending
     // If we're not continuing an existing chat, save to history
     if (!chatActiveChatId.value && messages.value.length > 0) {
       saveToHistory()

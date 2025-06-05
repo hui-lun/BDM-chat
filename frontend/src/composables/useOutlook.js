@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 
-export function useOutlook(showErrorMessage, query, sendQuery) {
+export function useOutlook(showErrorMessage, query, sendMessage) {
   // Store the latest email content (auto-update on email switch, but do not auto-fill query)
   const latestMailContent = ref('')
 
@@ -16,27 +16,17 @@ export function useOutlook(showErrorMessage, query, sendQuery) {
     }
   }
 
-  function handleEmailChange(autoSend = false) {
-    const item = Office.context.mailbox?.item;
-    if (!item) {
-      showErrorMessage("Cannot access email item.");
-      return;
-    }
-    item.body.getAsync("text", (result) => {
-      if (result.status === Office.AsyncResultStatus.Succeeded) {
-        const content = result.value.trim();
-        if (content) {
-          const mailInfo = getMailInfo(item, content);
-          // No longer auto-fill query.value; only send when autoSend is true
-          if (autoSend) sendQuery(mailInfo); // Pass mailInfo to sendQuery
-        } else {
-          showErrorMessage("This email body is empty.");
-        }
-      } else {
-        showErrorMessage("Failed to retrieve email body.");
-        console.error("getAsync error:", result.error);
+  function handleEmailChange(isFromButton = false) {
+    if (isFromButton) {
+      if (!latestMailContent.value) {
+        showErrorMessage("No email content available.")
+        return
       }
-    });
+      query.value = latestMailContent.value
+      sendMessage(latestMailContent.value)
+    } else {
+      updateLatestMailContent()
+    }
   }
 
   // When switching emails, auto-update latestMailContent, but do not modify query
@@ -102,14 +92,13 @@ export function useOutlook(showErrorMessage, query, sendQuery) {
   // }
 
   function openDraftForm(body = '') {
-  if (Office.context.mailbox?.item?.displayReplyForm) {
-    const htmlBody = body.split('\n').map(line => `<p>${line}</p>`).join('');
-    Office.context.mailbox.item.displayReplyForm(htmlBody);
-  } else {
-    console.error("This Outlook version does not support displayReplyForm.");
+    if (Office.context.mailbox?.item?.displayReplyForm) {
+      const htmlBody = body.split('\n').map(line => `<p>${line}</p>`).join('');
+      Office.context.mailbox.item.displayReplyForm(htmlBody);
+    } else {
+      console.error("This Outlook version does not support displayReplyForm.");
+    }
   }
-}
-
 
   return {
     handleEmailChange,
