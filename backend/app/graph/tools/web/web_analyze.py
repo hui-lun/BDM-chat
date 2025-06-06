@@ -10,24 +10,26 @@ def fetch_and_analyze_web_html(query: str) -> dict:
     """
     Used for web analysis and external search, returns a brief summary.
     """
-    logger.info("[Tool Branch] Executing fetch_and_analyze_web_html (Web analysis/search)")
-    print(f"[fetch_and_analyze_web_html] input query: {query}")
+    logger.info("[web_analyze] Executing web analysis/search")
+    logger.debug(f"[web_analyze] Input query: {query}")
+    
     if not isinstance(query, str) or not query.strip():
         summary = "Please provide webpage content or keywords to analyze or search."
-        print(f"[fetch_and_analyze_web_html] summary (empty): {summary}")
+        logger.warning("[web_analyze] Empty or invalid query provided")
     else:
         try:
-            print('*****************************')
+            logger.debug("[web_analyze] Starting web search and summarization")
             summary = search_and_summarize_advanced(query)
-            print('[fetch_and_analyze_web_html] search_and_summarize_advanced output:')
-            print(summary)
+            logger.info("[web_analyze] Successfully completed web search and summarization")
+            logger.debug(f"[web_analyze] Generated summary: {summary}")
         except Exception as e:
-            summary = f"Error occurred during web analysis: {e}"
-            print(f"[fetch_and_analyze_web_html] Exception: {summary}")
+            error_msg = f"Error occurred during web analysis: {e}"
+            logger.error(f"[web_analyze] {error_msg}")
+            summary = error_msg
+
     new_state = {
         "agent_query": query,
         "summary": summary,
         "next_node": ""
     }
-    # logger.debug("[DEBUG] fetch_and_analyze_web_html - output state: %s", new_state)
     return new_state

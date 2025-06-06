@@ -1,10 +1,15 @@
 #richard's code
 import re
+import logging
 from langchain_community.utilities import DuckDuckGoSearchAPIWrapper
 from ...llm import llm
 
+# Configure logging
+logger = logging.getLogger(__name__)
+
 # === Optimize Query ===
 def optimize_query(query: str) -> str:
+    logger.info("[web_search] Optimizing search query")
     prompt = (
         "Extract the most relevant, concise English keywords from the following query for DuckDuckGo search.\n"
         "Requirements:\n"
@@ -20,9 +25,13 @@ def optimize_query(query: str) -> str:
         result = llm.invoke(prompt)
         content = result.content if hasattr(result, "content") else str(result)
         # Only take the first line, avoid LLM returning multiple suggestions or explanations
-        return content.splitlines()[0].strip()
-    except Exception:
+        optimized = content.splitlines()[0].strip()
+        logger.debug(f"[web_search] Optimized query: {optimized}")
+        return optimized
+    except Exception as e:
+        logger.error(f"[web_search] Error optimizing query: {str(e)}")
         return query
+
 # === Score ===
 def score_result(res: dict, keywords: list[str]) -> int:
     """
@@ -32,13 +41,14 @@ def score_result(res: dict, keywords: list[str]) -> int:
     snippet = res.get("snippet", "").lower()[:200]
     combined = title + " " + snippet
 
-    coverage      = sum(1 for kw in keywords if kw in combined) / len(keywords)
+    coverage = sum(1 for kw in keywords if kw in combined) / len(keywords)
     total_matches = sum(combined.count(kw) for kw in keywords)
-    score         = total_matches + 2 * coverage
+    score = total_matches + 2 * coverage
     return score
 
 # === Keyword Filter ===
 def keyword_filter(query: str, results: list, top_k: int = 5) -> list:
+    logger.debug(f"[web_search] Filtering results with top_k={top_k}")
     keywords = re.findall(r'\w+', query.lower())
     scored = sorted(results, key=lambda r: score_result(r, keywords), reverse=True)
     
@@ -48,43 +58,50 @@ def search_and_summarize_advanced(query: str, max_results: int = 10, top_k: int 
     """
     Use DuckDuckGoSearchAPIWrapper to fetch structured search results (with URLs), automatically filter the top_k most relevant results using keyword matching, and then summarize the filtered results with LLM.
     """
+    logger.info("[web_search] Starting advanced search and summarize")
     duck_api = DuckDuckGoSearchAPIWrapper()
+    
     # Query optimization
     optimized_query = optimize_query(query)
-    print('********************************') 
-    print(f"Optimized Query: {optimized_query}")
-    print('********************************')
+    logger.info(f"[web_search] Using optimized query: {optimized_query}")
 
-    print(f'test optimized_query: {optimized_query}')
-    print('error1')
-    results = duck_api.results(optimized_query, max_results)
-    print('error2')
-    # Automatically focus the top_k most relevant results using keyword matching
-    filtered = keyword_filter(optimized_query, results, top_k=top_k)
-
-    context = ""
-    print('********************************')
-    print(f"Filtered Results: {filtered}")
-    print('********************************')
-    for idx, res in enumerate(filtered, 1):
-        title = res.get("title", "")
-        snippet = res.get("snippet", "")
-        url = res.get("link", "")
-        context += f"{idx}. {title}\n{snippet}\nURL: {url}\n\n"
-    prompt = (
-        f"Based ONLY on the following DuckDuckGo search results, answer the user's question as accurately as possible.\n"
-        f"Original Question: {query}\n"
-        f"Optimized Question: {optimized_query}\n"
-        f"Search Results:\n{context}\n"
-        f"- Only use information that is explicitly present in the search results. Do NOT use any prior knowledge, inference, or assumptions.\n"
-        f"- If the search results cover multiple unrelated topics, only answer for the topic most relevant to the user's question. Do not mix information from different topics.\n"
-        f"- Summarize the answer in 200 words or less. Avoid repeating content or the question.\n"
-        f"- The answer should be a single, concise paragraph in plain text, without any special formatting, bullet points, or markdown symbols.\n"
-        f"- Do not include the results number or URL in the answer.\n"
-        f"- Do not include any ** or * in the answer.\n"
-    )
     try:
+        logger.debug(f"[web_search] Fetching {max_results} results from DuckDuckGo")
+        results = duck_api.results(optimized_query, max_results)
+        
+        # Automatically focus the top_k most relevant results using keyword matching
+        filtered = keyword_filter(optimized_query, results, top_k=top_k)
+        logger.debug(f"[web_search] Filtered to {len(filtered)} most relevant results")
+
+        context = ""
+        for idx, res in enumerate(filtered, 1):
+            title = res.get("title", "")
+            snippet = res.get("snippet", "")
+            url = res.get("link", "")
+            context += f"{idx}. {title}\n{snippet}\nURL: {url}\n\n"
+        
+        logger.debug("[web_search] Generated context from filtered results")
+        
+        prompt = (
+            f"Based ONLY on the following DuckDuckGo search results, answer the user's question as accurately as possible.\n"
+            f"Original Question: {query}\n"
+            f"Optimized Question: {optimized_query}\n"
+            f"Search Results:\n{context}\n"
+            f"- Only use information that is explicitly present in the search results. Do NOT use any prior knowledge, inference, or assumptions.\n"
+            f"- If the search results cover multiple unrelated topics, only answer for the topic most relevant to the user's question. Do not mix information from different topics.\n"
+            f"- Summarize the answer in 200 words or less. Avoid repeating content or the question.\n"
+            f"- The answer should be a single, concise paragraph in plain text, without any special formatting, bullet points, or markdown symbols.\n"
+            f"- Do not include the results number or URL in the answer.\n"
+            f"- Do not include any ** or * in the answer.\n"
+        )
+        
+        logger.debug("[web_search] Generating summary with LLM")
         answer = llm.invoke(prompt)
-        return answer.content if hasattr(answer, "content") else str(answer)
+        result = answer.content if hasattr(answer, "content") else str(answer)
+        logger.info("[web_search] Successfully generated summary")
+        return result
+        
     except Exception as e:
-        return f"LLM analysis failed: {e}"
+        error_msg = f"LLM analysis failed: {e}"
+        logger.error(f"[web_search] {error_msg}")
+        return error_msg

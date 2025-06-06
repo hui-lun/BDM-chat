@@ -2,6 +2,7 @@
 import re
 import time
 import yaml
+import logging
 from tabulate import tabulate
 from collections import defaultdict
 from ...llm import llm
@@ -11,14 +12,23 @@ import requests
 from dotenv import load_dotenv
 from pymongo import MongoClient
 
+# Configure logging
+logger = logging.getLogger(__name__)
+
 def connect_mongo():
+    logger.info("[spec_analyze] Connecting to MongoDB")
     load_dotenv()
     MONGODB_IP = os.getenv('MONGODB_IP')
     MONGODB_USER = os.getenv('MONGODB_USER')
     MONGODB_PASSWORD = os.getenv('MONGODB_PASSWORD')
     uri = f"mongodb://{MONGODB_USER}:{MONGODB_PASSWORD}@{MONGODB_IP}:27017/admin"
-    client = MongoClient(uri)
-    return client
+    try:
+        client = MongoClient(uri)
+        logger.debug("[spec_analyze] MongoDB connection established")
+        return client
+    except Exception as e:
+        logger.error(f"[spec_analyze] MongoDB connection failed: {str(e)}")
+        raise
 
 #----------global variable----------#
 PROXY_SERVER = os.getenv('PROXY_SERVER')
@@ -36,8 +46,13 @@ status = ""
 #----------global variable----------#
 
 #----------get spec prompt----------#
-with open(PROMPT_PATH, "r") as file:
-    prompts = yaml.safe_load(file)
+try:
+    logger.info("[spec_analyze] Loading prompts from YAML")
+    with open(PROMPT_PATH, "r") as file:
+        prompts = yaml.safe_load(file)
+except Exception as e:
+    logger.error(f"[spec_analyze] Error loading prompts: {str(e)}")
+    raise
 
 spec_field_lookup = {}
 
@@ -80,17 +95,22 @@ def extract_field_names(raw_keys):
     return list(field_names)
 
 def fetch_qvl(model, sku, gbt_pn):
+    logger.info(f"[spec_analyze] Fetching QVL data for model: {model}, SKU: {sku}, GBT PN: {gbt_pn}")
     try:
         response = requests.get(PROXY_SERVER, params={"Model": model, "SKU": sku, "gbt_pn": gbt_pn}, timeout=10)
         response.raise_for_status()
         data = response.json()
         if not data:
+            logger.warning("[spec_analyze] No QVL data found")
             return "no_one_data"
+        logger.debug("[spec_analyze] Successfully fetched QVL data")
         return data
     except Exception as e:
+        logger.error(f"[spec_analyze] Error fetching QVL data: {str(e)}")
         return "no_one_data"
     
 def insert_qvl(data):
+    logger.info("[spec_analyze] Inserting QVL data into MongoDB")
     collection = db[QVL_COLLECTION_NAME]
     collection.delete_many({})
     if isinstance(data, list):
@@ -99,11 +119,12 @@ def insert_qvl(data):
     else:
         data['time'] = datetime.datetime.now()
         collection.insert_one(data)
-    print("QVL data inserted into MongoDB successfully.")
+    logger.info("[spec_analyze] QVL data inserted successfully")
 
-def get_qvl_data(projectmodel,barebone_gbtsn):
+def get_qvl_data(projectmodel, barebone_gbtsn):
     global QVL_COLLECTION_NAME
-    QVL_COLLECTION_NAME = f"server_qvl_{projectmodel.replace('-', '_')}" if projectmodel else None          #replace - to _
+    logger.info(f"[spec_analyze] Getting QVL data for project model: {projectmodel}")
+    QVL_COLLECTION_NAME = f"server_qvl_{projectmodel.replace('-', '_')}" if projectmodel else None
     collections = db.list_collection_names()
     if QVL_COLLECTION_NAME not in collections:
         if re.match(pattern, projectmodel):
@@ -113,6 +134,7 @@ def get_qvl_data(projectmodel,barebone_gbtsn):
             gbt_pn = f"{barebone_gbtsn}"
             result = fetch_qvl(model, sku, gbt_pn)
             if result == "no_one_data":
+                logger.warning("[spec_analyze] No QVL data available")
                 return "no_one_data"
             else:
                 insert_qvl(result)
@@ -141,6 +163,7 @@ def get_qvl_field():
 
 def get_projection_result(collection, query, fields):
     """Helper to query specific fields from a collection."""
+    logger.debug(f"[spec_analyze] Getting projection result for collection: {collection}")
     if not fields:
         return []
     projection = {f: 1 for f in fields}
@@ -152,6 +175,7 @@ def search_database(query: str) -> str:
     Generates and executes MongoDB queries based on user input.
     Attempts to extract project model and query related QVL data.
     """
+    logger.info("[spec_analyze] Starting database search")
     # Try to extract the project model pattern from user query
     match = re.search(pattern, query, re.IGNORECASE)
     if match:
@@ -160,7 +184,8 @@ def search_database(query: str) -> str:
             first_start = time.time()
             return_result = []
             models = re.findall(r"[A-Z0-9]+-[A-Z0-9]+(?:-[A-Z0-9_]+)?", query)
-            print(f"step1: find {models} in query")
+            logger.info(f"[spec_analyze] Found models in query: {models}")
+            
             for name in models:
                 start = time.time()
                 index = re.escape(name)
@@ -177,13 +202,16 @@ def search_database(query: str) -> str:
                     })
                 if not results:
                     result = "barebone not found."
+                    logger.warning(f"[spec_analyze] No barebone found for model: {name}")
                 elif len(results) == 1:
                     result = [results[0]]
+                    logger.info(f"[spec_analyze] Found single barebone for model: {name}")
                 else:
                     result = results
+                    logger.info(f"[spec_analyze] Found multiple barebones for model: {name}")
                 
                 end = time.time()
-            print(f"step2: find projectmodel and gbtsn is : {result} and spend {end-first_start:4f}s")
+            logger.debug(f"[spec_analyze] Model search completed in {end-first_start:.4f}s")
             
             try:
                 #----------analyze_key to database----------#
@@ -193,8 +221,8 @@ def search_database(query: str) -> str:
                 result_key.append(response)
                 fields = extract_field_names(result_key)
                 end = time.time()
-                print(f"step3: analyze key is : {fields} and spend time : {end-start:4f}")
-                #----------analyze_key to database----------#
+                logger.info(f"[spec_analyze] Analyzed keys: {fields} in {end-start:.4f}s")
+                
                 for name in result:
                     #----------save to database----------#
                     start = time.time()
@@ -203,10 +231,10 @@ def search_database(query: str) -> str:
                     qvl_return = get_qvl_data(projectmodel, barebone_gbtsn)
                     end = time.time()
                     if qvl_return == "one_data":
-                        print(f"step4: {QVL_COLLECTION_NAME} save to database and spend {end-start:4f}s")
+                        logger.info(f"[spec_analyze] {QVL_COLLECTION_NAME} saved to database in {end-start:.4f}s")
                     else:
-                        print(f"step4: {QVL_COLLECTION_NAME} one data not support and spend {end-start:4f}s")
-                    #----------save to database----------#
+                        logger.warning(f"[spec_analyze] {QVL_COLLECTION_NAME} data not supported in {end-start:.4f}s")
+                    
                     #----------search database----------#
                     start = time.time()
                     invalid_fields = []
@@ -223,7 +251,7 @@ def search_database(query: str) -> str:
                         else:
                             invalid_fields.append(f)
                     if invalid_fields:
-                        print(f"[WARN] No matching fields: {invalid_fields}")
+                        logger.warning(f"[spec_analyze] No matching fields: {invalid_fields}")
 
                     response1 = get_projection_result(BAREBONE_COLLECTION_NAME, {"ProjectModel": projectmodel}, nested_fields)
                     response2 = get_projection_result(BAREBONE_COLLECTION_NAME, {"ProjectModel": projectmodel}, non_nested_fields)
@@ -242,28 +270,30 @@ def search_database(query: str) -> str:
                         qvl_response = [{}]
                         
                     end = time.time()
-                    print(f"step5: finish search database result and spend time : {end-start:4f}")
-                    #----------search database----------#
+                    logger.info(f"[spec_analyze] Database search completed in {end-start:.4f}s")
                     
                     #----------summarize----------#
                     start = time.time()
-                    show = summarize_result(projectmodel,spec_response+qvl_response)   
+                    show = summarize_result(projectmodel, spec_response+qvl_response)
+                    end = time.time()
+                    logger.info(f"[spec_analyze] Result summarization completed in {end-start:.4f}s")
                     return_result.append(show)
+                    
             except Exception as e:
-                print(f"An error occurred: {e}")
+                logger.error(f"[spec_analyze] Error during database search: {str(e)}")
                 return "database not found this server"
             
             last_end = time.time()
-            print(f"step6: summarize spend time : {last_end-start:4f}")
+            logger.info(f"[spec_analyze] summarize spend time : {last_end-start:4f}")
             #----------summarize----------#
             print(f"Program execution time : {last_end-first_start:4f}")   
             return return_result
         
         except Exception as e:
-            print(f"An error occurred: {e}")
+            logger.error(f"[spec_analyze] Error processing query: {str(e)}")
             return "database not found this server"
     else:
-        #要再補一個spec search projectmodel
+        logger.warning("[spec_analyze] No project model pattern found in query")
         return "database not found this server"
 
 def analyze_key(question):

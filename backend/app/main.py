@@ -5,6 +5,7 @@ import os
 import msgpack
 import json
 import asyncio
+import logging
 from typing import AsyncGenerator
 from fastapi.middleware.cors import CORSMiddleware
 from .email_to_db import process_email_to_mongo
@@ -12,6 +13,19 @@ from pymongo import MongoClient
 from dotenv import load_dotenv
 import uuid
 from datetime import datetime
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d',
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler('app.log')
+    ]
+)
+logger = logging.getLogger(__name__)
+
 app = FastAPI()
 
 app.add_middleware(
@@ -85,7 +99,7 @@ def mail_format_database(email_info: dict) -> dict:
         dt = datetime.strptime(raw_date, "%a %b %d %Y %H:%M:%S GMT%z")
         datetime_str = dt.strftime("%Y/%-m/%-d %-I:%M %p")
     except Exception as e:
-        print(f"[convert_email_info] 日期格式錯誤: {e}")
+        logger.error(f" [convert_email_info] Date format error: {e}")
         datetime_str = raw_date  # fallback raw date
 
     # all format
@@ -150,17 +164,17 @@ def agent_chat(req: AgentChatRequest):
     if 'Subject:' in query:
         is_email = True
         email_info = parse_email_query(query)
-        print("Parsed email info:", email_info)
+        logger.info(f"Parsed email info: {email_info}")
 
         # format for mongoDB
         email = mail_format_database(email_info)
-        print("email_info_bill:",email)
+        logger.info(f"Formatted email for database: {email}")
         thread_id_db = process_email_to_mongo(email)
         thread_id = thread_id_db["thread_id"]
         config = {"configurable": {"thread_id": thread_id}}
 
         # Use the pre-generated summary
-        print(email_info['summary'])
+        logger.debug(f"Using email summary: {email_info['summary']}")
         state = AgentState(agent_query=email_info['summary'], summary="")
         result = agent_graph_app.invoke(state, config=config)
     else:
@@ -169,7 +183,7 @@ def agent_chat(req: AgentChatRequest):
         state = AgentState(agent_query=query, summary="")
         result = agent_graph_app.invoke(state, config=config)
     
-    print("is_email",is_email)
+    logger.debug(f"Request type - is_email: {is_email}")
 
     # Pass config only if it exists
     # if config:
@@ -203,7 +217,7 @@ async def chat(req: ChatRequest):
                 
         except Exception as e:
             error_msg = f"Error generating response: {str(e)}"
-            print(error_msg)
+            logger.error(error_msg)
             yield json.dumps({"error": error_msg}) + "\n"
     
     return StreamingResponse(
@@ -224,15 +238,18 @@ async def get_qa_history(title: str):
     """
     project_doc = project_col.find_one({"Title": title})
     if not project_doc:
+        logger.info(f"No project document found for title: {title}")
         return {"title": title, "qa_list": []}
 
     thread_id = project_doc.get("thread_id")
     if not thread_id:
+        logger.warning(f"No thread_id found for project: {title}")
         return {"title": title, "qa_list": []}
 
     # Get questions from BDM Email field
     bdm_email_list = project_doc.get("BDM Email", [])
     if not isinstance(bdm_email_list, list) or not bdm_email_list:
+        logger.warning(f"No BDM Email list found for project: {title}")
         return {"title": title, "qa_list": []}
 
     # Get checkpoints for this thread
@@ -255,7 +272,8 @@ async def get_qa_history(title: str):
                     "answer": answer
                 })
         except Exception as e:
-            print(f"Error processing checkpoint: {e}")
+            logger.error(f"Error processing checkpoint for thread {thread_id}: {e}")
             continue
 
+    logger.info(f"Retrieved {len(qa_list)} Q&A pairs for title: {title}")
     return {"title": title, "qa_list": qa_list}
