@@ -10,6 +10,7 @@ from .tools.email.email_reply import generate_email_reply
 from .tools.mgmt.manage import get_manage_data
 from .tools.mgmt.pretty_output import pretty_print_projects
 from .checkpoint import get_checkpointer
+from .markdown_output import markdown_output
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -32,6 +33,7 @@ def spec_search(state: AgentState):
         }
     else:
         logger.info(f"[spec_search] Found summary: {summary}")
+        summary = markdown_output(summary)
         state["summary"] = summary
         return {
             "summary": summary,
@@ -104,6 +106,9 @@ def manage(state: AgentState):
                     logger.debug("[manage] Formatting non-chart response")
                     response_text = pretty_print_projects(data)
             # response_text = pretty_print_projects(data)
+                    response_text = pretty_print_projects(data)
+                    response_text = markdown_output(response_text)
+
             logger.debug("[manage] Successfully processed BDM query")
         else:
             logger.debug("[manage] Converting result to JSON and formatting")
@@ -111,6 +116,8 @@ def manage(state: AgentState):
             response_text = json.dumps(result, ensure_ascii=False, indent=2)
             data = json.loads(response_text)
             response_text = pretty_print_projects(data)
+            response_text = markdown_output(response_text)
+            
             logger.debug("[manage] Successfully processed BDM query")
         logger.info("[manage] Sending response to frontend: {response_text}...")
         

@@ -1,17 +1,17 @@
 <template>
   <div class="chat-body" ref="chatBody">
-    <div v-for="(msg, idx) in messages" :key="idx" :class="['msg-row', msg.sender]">
+    <div v-for="(msg, idx) in parsedMessages" :key="idx" :class="['msg-row', msg.sender]">
       <div :class="['msg-bubble', msg.sender]">
         <div v-if="msg.loading" class="loading-dots">
           <span></span><span></span><span></span>
         </div>
-        
+
         <div v-if="msg.chartData" class="chart-container">
           <img :src="msg.chartData.imageUrl" alt="BDM 狀態圖表" class="chart-image" />
         </div>
 
         <div v-else>
-          <div class="message-text" v-html="msg.text"></div>
+          <div class="message-text" v-html="msg.parsedHtml"></div>
           <button v-if="msg.isEmail" class="draft-btn" @click="generateDraft(msg)">產生草稿</button>
         </div>
       </div>
@@ -20,34 +20,41 @@
 </template>
 
 <script setup>
-import { onUpdated, ref } from 'vue'
+import { onUpdated, ref, computed } from 'vue'
+import { marked } from 'marked'
+
 const props = defineProps({
   messages: Array
 })
+
 const chatBody = ref(null)
+
+const parsedMessages = computed(() =>
+  props.messages.map(msg => ({
+    ...msg,
+    parsedHtml: marked.parse(msg.text || '') // 將 Markdown 轉 HTML
+  }))
+)
 
 const emit = defineEmits(['open-draft-form'])
 
 const generateDraft = (msg) => {
   if (!msg.mailInfo) return
-  
+
   const subject = `Re: ${msg.mailInfo.title || 'No Subject'}`
   const draftTemplate = `Dear ${msg.mailInfo.customer}, 
 
     Thank you for your inquiry. Based on your request:
-    <br>
-
+    <br><br>
     ${msg.text}
-
-    <br>
+    <br><br>
     If you have any questions, please feel free to contact me. 
     Thank you!
     
-    <br>
+    <br><br>
     ${msg.mailInfo.BDM}`
 
   emit('open-draft-form', draftTemplate)
-  //emit('open-draft-form', subject, draftTemplate, msg.mailInfo.customerEmail)
 }
 
 onUpdated(() => {
@@ -59,25 +66,55 @@ onUpdated(() => {
 
 <style scoped>
 .message-text {
-  white-space: pre-wrap;
+  white-space: normal;
   word-wrap: break-word;
+  line-height: 1.6;
+  font-size: 0.95rem;
 }
 
-/* chart of container */
+.message-text h1,
+.message-text h2,
+.message-text h3 {
+  font-weight: bold;
+  margin: 10px 0 5px;
+}
+
+.message-text ::v-deep p {
+  margin: 3px !important;
+}
+
+.message-text ul {
+  padding-left: 1.5rem;
+  margin: 6px 0;
+}
+
+.message-text li {
+  margin: 4px 0;
+}
+
+.message-text strong {
+  font-weight: bold;
+}
+
+.message-text em {
+  font-style: italic;
+}
+
+.message-text code {
+  background-color: #f3f3f3;
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 0.9em;
+}
+
 .chart-container {
   margin: 10px 0;
   max-width: 100%;
   overflow: hidden;
 }
 
-.typing-indicator {
-  display: inline-flex;
-  align-items: center;
-  margin-left: 8px;
-  height: 20px;
-}
-
-.typing-indicator span {
+.loading-dots span {
   display: inline-block;
   width: 4px;
   height: 4px;
@@ -87,14 +124,12 @@ onUpdated(() => {
   animation: typing 1s infinite ease-in-out;
 }
 
-.typing-indicator span:nth-child(1) { animation-delay: 0.2s; }
-.typing-indicator span:nth-child(2) { animation-delay: 0.3s; }
-.typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+.loading-dots span:nth-child(1) { animation-delay: 0.2s; }
+.loading-dots span:nth-child(2) { animation-delay: 0.3s; }
+.loading-dots span:nth-child(3) { animation-delay: 0.4s; }
 
 @keyframes typing {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-4px); }
 }
-
-
 </style>
