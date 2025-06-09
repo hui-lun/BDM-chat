@@ -1,0 +1,28 @@
+use_default_settings:
+  engines:
+    keep_only:
+      - google
+      - duckduckgo
+server:
+  secret_key: "502081bb13533d7d11666f55dccaba5f2051936adff9918473be33fa18302136"
+
+search:
+    formats:
+        - html
+        - json
+    default_language: en
+    default_region: us
+
+engines:
+  - name: google
+  - name: duckduckgo
+
+doi_resolvers:
+  oadoi.org: 'https://oadoi.org/'
+  doi.org: 'https://doi.org/'
+  doai.io: 'https://dissem.in/'
+  sci-hub.se: 'https://sci-hub.se/'
+  sci-hub.st: 'https://sci-hub.st/'
+  sci-hub.ru: 'https://sci-hub.ru/'
+
+default_doi_resolver: 'oadoi.org'

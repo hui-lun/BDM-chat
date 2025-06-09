@@ -26,5 +26,13 @@ services:
     volumes:
       - ./frontend/ssl:/etc/nginx/ssl
 
-
+  searxng:
+    image: searxng/searxng:latest
+    container_name: searxng
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./searxng/settings/settings.yml:/etc/searxng/settings.yml
+    environment:
+      - SEARXNG_SECRET=502081bb13533d7d11666f55dccaba5f2051936adff9918473be33fa18302136
 

@@ -1,7 +1,7 @@
 import logging
 
 from langchain.tools import tool
-from .web_search import search_and_summarize_advanced
+from .web_search import search_and_summarize
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +19,8 @@ def fetch_and_analyze_web_html(query: str) -> dict:
     else:
         try:
             logger.debug("[web_analyze] Starting web search and summarization")
-            summary = search_and_summarize_advanced(query)
+            # summary = search_and_summarize_advanced(query)
+            summary = search_and_summarize(query)
             logger.info("[web_analyze] Successfully completed web search and summarization")
             logger.debug(f"[web_analyze] Generated summary: {summary}")
         except Exception as e:
