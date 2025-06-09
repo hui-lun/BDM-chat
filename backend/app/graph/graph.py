@@ -2,11 +2,9 @@ import json
 import logging
 from typing_extensions import TypedDict
 from langgraph.graph import StateGraph, END
-from .tools.email.mail_summarize import process_email
 from .llm import llm
 from .tools.spec.spec_analyze import search_database
 from .tools.web.web_analyze import fetch_and_analyze_web_html
-from .tools.email.email_reply import generate_email_reply
 from .tools.mgmt.manage import get_manage_data
 from .tools.mgmt.pretty_output import pretty_print_projects
 from .checkpoint import get_checkpointer
@@ -33,20 +31,14 @@ def spec_search(state: AgentState):
         }
     else:
         logger.info(f"[spec_search] Found summary: {summary}")
-        summary = markdown_output(summary)
+        # summary = markdown_output(summary)
         state["summary"] = summary
         return {
             "summary": summary,
-            "next_node": END
+            "next_node": "beauty_output"
         }
     
 
-
-def is_natural_query(text: str) -> bool:
-    email_indicators = ["subject:", "dear", "regards", "best", "sincerely", "message", "thank you", "hi"]
-    if any(word in text.lower() for word in email_indicators) or len(text.split("\n")) > 5:
-        return False
-    return True
 
 def select_tool(state: AgentState):
     query = state["agent_query"]
@@ -88,6 +80,15 @@ def llm_answer(state: AgentState):
     }
 
 
+def beauty_output(state: AgentState):
+    logger.info("[beauty_output] generate response with markdown format")
+    markdown = markdown_output(state["summary"])
+    return {
+        "summary": markdown,
+        "next_node": END
+    }
+
+
 def manage(state: AgentState):
     logger.info("[manage] Processing BDM management request")
     query = state["agent_query"]
@@ -106,8 +107,8 @@ def manage(state: AgentState):
                     logger.debug("[manage] Formatting non-chart response")
                     response_text = pretty_print_projects(data)
             # response_text = pretty_print_projects(data)
-                    response_text = pretty_print_projects(data)
-                    response_text = markdown_output(response_text)
+                    # response_text = pretty_print_projects(data)
+                    # response_text = markdown_output(response_text)
 
             logger.debug("[manage] Successfully processed BDM query")
         else:
@@ -116,14 +117,13 @@ def manage(state: AgentState):
             response_text = json.dumps(result, ensure_ascii=False, indent=2)
             data = json.loads(response_text)
             response_text = pretty_print_projects(data)
-            response_text = markdown_output(response_text)
             
             logger.debug("[manage] Successfully processed BDM query")
         logger.info("[manage] Sending response to frontend: {response_text}...")
         
         return {
             "summary": response_text,  # This will be displayed in the chat
-            "next_node": END
+            "next_node": "beauty_output"
         }
         
     except Exception as e:
@@ -141,6 +141,7 @@ graph.add_node("spec_search", spec_search)
 graph.add_node("web_analyze", web_analyze)
 graph.add_node("llm_answer", llm_answer)
 graph.add_node("manage", manage)
+graph.add_node("beauty_output", beauty_output)
 
 graph.set_entry_point("select_tool")
 
@@ -159,9 +160,10 @@ graph.add_conditional_edges(
     lambda state: state["next_node"]
 )
 
-graph.add_edge("spec_search", END)
+# graph.add_edge("spec_search", "beauty_output")
 graph.add_edge("web_analyze", END)
-graph.add_edge("manage", END)
+# graph.add_edge("manage", beauty_output)
+graph.add_edge("beauty_output", END)
 
 # Compile the graph
 checkpointer = get_checkpointer()
