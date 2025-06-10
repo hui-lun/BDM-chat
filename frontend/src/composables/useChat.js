@@ -122,40 +122,105 @@ export function useChat(chatHistory) {
       controller = new AbortController()
       let res
       if (useAgent.value) {
-        res = await axios.post('/agent-chat', { agent_query: userMsg }, { signal: controller.signal })
-        // Handle agent chat response as before
-        const responseData = res.data.summary || res.data.response || ''
-        let parsedResponse = {}
-        try {
-          parsedResponse = typeof responseData === 'string' ? 
-                          JSON.parse(responseData) : 
-                          responseData
-        } catch (e) {
-          parsedResponse = { 
-            type: 'text', 
-            message: responseData 
-          }
+        controller = new AbortController()
+
+        const response = await fetch('/agent-chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ agent_query: userMsg }),
+          signal: controller.signal
+        })
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
         }
-        if (parsedResponse.type === 'chart' && parsedResponse.chart_data) {
-          messages.value[messages.value.length - 1] = {
-            sender: 'ai',
-            text: parsedResponse.message,
-            chartData: {
-              imageUrl: parsedResponse.chart_data,
-              contentType: parsedResponse.content_type || 'image/png',
-              cleanup: () => {}  
+
+        const reader = response.body.getReader()
+        const decoder = new TextDecoder()
+        let accumulatedText = ''
+        let isFirstToken = true
+        let isEmail = false
+
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+
+          const chunk = decoder.decode(value)
+          const lines = chunk.split('\n')
+
+          for (const line of lines) {
+            if (!line.trim()) continue
+            try {
+              const data = JSON.parse(line)
+              console.log('[frontend] Received data:', data)
+          
+              if (data.from_email !== undefined) {
+                console.log('[frontend] Received from_email flag:', data.from_email)
+                isEmail = data.from_email
+              } else if (data.summary !== undefined) {
+                console.log('[frontend] Received summary chunk:', data.summary)
+                accumulatedText += data.summary
+                console.log('[frontend] Accumulated text so far:', accumulatedText)
+
+                // 判斷是否為 chart
+                let parsedResponse
+                try {
+                  parsedResponse = JSON.parse(accumulatedText)
+                } catch {
+                  parsedResponse = { type: 'text', message: accumulatedText }
+                }
+
+                if (
+                  parsedResponse.type === 'chart' &&
+                  parsedResponse.chart_data
+                ) {
+                  console.log("i'm chart")
+                  messages.value[messages.value.length - 1] = {
+                    sender: 'ai',
+                    text: parsedResponse.message,
+                    chartData: {
+                      imageUrl: parsedResponse.chart_data,
+                      contentType: parsedResponse.content_type || 'image/png',
+                      cleanup: () => {}
+                    }
+                  }
+                  // return
+                }
+
+                if (isFirstToken) {
+                  isFirstToken = false
+                  console.log('[frontend] First token, updating message')
+                  messages.value[messages.value.length - 1] = {
+                    sender: 'ai',
+                    text: accumulatedText,
+                    isEmail,
+                    mailInfo: isEmail ? currentMailInfo.value : null,
+                    loading: false
+                  }
+                } else {
+                  // Just update the text
+                  console.log('[frontend] Updating message text')
+                  messages.value[messages.value.length - 1].text = accumulatedText
+                  await nextTick()
+                }
+              }
+            } catch (e) {
+              console.error('Error parsing streaming response:', line, e)
             }
           }
-          return
         }
-        const isEmail = res.data.from_email === true
-        messages.value[messages.value.length - 1] = { 
-          sender: 'ai', 
-          text: res.data.summary, 
+
+        // 最終補上最後一次更新（保險）
+        messages.value[messages.value.length - 1] = {
+          sender: 'ai',
+          text: accumulatedText,
           isEmail,
-          mailInfo: isEmail ? currentMailInfo.value : null
+          mailInfo: isEmail ? currentMailInfo.value : null,
+          loading: false
         }
-      } else {
+      }
+      
+      else {
         // Handle streaming chat response
         console.time("chatRequest")
         console.log("start to post")

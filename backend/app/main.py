@@ -8,7 +8,7 @@ import asyncio
 import logging
 from typing import AsyncGenerator
 from fastapi.middleware.cors import CORSMiddleware
-from .email_to_db import process_email_to_mongo
+from .graph.tools.email.email_to_db import process_email_to_mongo
 from pymongo import MongoClient
 from dotenv import load_dotenv
 import uuid
@@ -78,42 +78,69 @@ from .graph.tools.email.email_parse import parse_email_query, mail_format_databa
 
 
 @app.post("/agent-chat")
-def agent_chat(req: AgentChatRequest):
-    # Parse email query if it looks like an email
+async def agent_chat(req: AgentChatRequest):
     query = req.agent_query
     is_email = False
     email_info = None
-    
 
     if 'Subject:' in query:
         is_email = True
         email_info = parse_email_query(query)
-        logger.info(f"Parsed email info: {email_info}")
-
-        # format for mongoDB
         email = mail_format_database(email_info)
-        logger.info(f"Formatted email for database: {email}")
         thread_id_db = process_email_to_mongo(email)
         thread_id = thread_id_db["thread_id"]
         config = {"configurable": {"thread_id": thread_id}}
-
-        # Use the pre-generated summary
-        logger.debug(f"Using email summary: {email_info['summary']}")
         state = AgentState(agent_query=email_info['summary'], summary="")
-        result = agent_graph_app.invoke(state, config=config)
     else:
         thread_id = uuid.uuid4().hex[:8]
         config = {"configurable": {"thread_id": thread_id}}
         state = AgentState(agent_query=query, summary="")
-        result = agent_graph_app.invoke(state, config=config)
-    
-    logger.debug(f"Request type - is_email: {is_email}")
-    
-    return {
-        "summary": result.get("summary", ""),
-        "from_email": is_email
-    }
 
+    async def event_stream():
+        # Send from_email to frontend first
+        yield json.dumps({"from_email": is_email}) + "\n"
+        result = agent_graph_app.invoke(state, config=config)
+        logger.info(f"[agent_chat] Final result: {result}")
+        
+        # Check if final result needs streaming
+        if result.get("needs_streaming"):
+            prompt = result["summary"]
+            logger.info(f"[agent_chat] Starting LLM streaming for final result")
+            async for chunk in llm.astream(prompt):
+                
+                if hasattr(chunk, "content"):
+                    text = chunk.content
+                elif hasattr(chunk, "text"):
+                    text = chunk.text
+                elif hasattr(chunk, "message"):
+                    text = chunk.message
+                else:
+                    text = str(chunk)
+                
+                logger.debug(f"[agent_chat] Extracted text: '{text}' (length: {len(text)})")
+                logger.debug(f"[agent_chat] Streaming chunk: {text}")
+                yield json.dumps({"summary": text}) + "\n"
+                await asyncio.sleep(0)  # Force immediate sending
+        else:
+            # Handle results that don't need streaming
+            if "summary" in result:
+                logger.info(f"[agent_chat] Regular summary: {result['summary'][:100]}...")
+                yield json.dumps({"summary": result["summary"]}) + "\n"
+
+    return StreamingResponse(
+        event_stream(), 
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",  # Disable nginx buffering
+            "Content-Type": "text/event-stream",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Headers": "*"
+        }
+    )
+
+                            
 
 @app.post("/chat")
 async def chat(req: ChatRequest):

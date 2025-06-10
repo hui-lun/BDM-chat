@@ -56,7 +56,7 @@ def keyword_filter(query: str, results: list, top_k: int = 5) -> list:
 # === Search and Summarize Advanced ===
 def search_and_summarize(query: str, max_results: int = 10, top_k: int = 5) -> str:
     """
-    Use SearxSearchWrapper to fetch structured search results (with URLs), automatically filter the top_k most relevant results using keyword matching, and then summarize the filtered results with LLM.
+    Use SearxSearchWrapper to fetch structured search results (with URLs), automatically filter the top_k most relevant results using keyword matching, and return the raw results for further processing.
     """
     searxng_api = SearxSearchWrapper(searx_host='http://searxng:8080')
     # Query optimization
@@ -79,20 +79,22 @@ def search_and_summarize(query: str, max_results: int = 10, top_k: int = 5) -> s
         snippet = res.get("snippet", "")
         url = res.get("link", "")
         context += f"{idx}. {title}\n{snippet}\nURL: {url}\n\n"
-    prompt = (
-        f"Based ONLY on the following DuckDuckGo search results, answer the user's question as accurately as possible.\n"
-        f"Original Question: {query}\n"
-        f"Optimized Question: {optimized_query}\n"
-        f"Search Results:\n{context}\n"
-        f"- Only use information that is explicitly present in the search results. Do NOT use any prior knowledge, inference, or assumptions.\n"
-        f"- If the search results cover multiple unrelated topics, only answer for the topic most relevant to the user's question. Do not mix information from different topics.\n"
-        f"- Summarize the answer in 200 words or less. Avoid repeating content or the question.\n"
-        f"- The answer should be a single, concise paragraph in plain text, without any special formatting, bullet points, or markdown symbols.\n"
-        f"- Do not include the results number or URL in the answer.\n"
-        f"- Do not include any ** or * in the answer.\n"
-    )
-    try:
-        answer = llm.invoke(prompt)
-        return answer.content if hasattr(answer, "content") else str(answer)
-    except Exception as e:
-        return f"LLM analysis failed: {e}"
+#     prompt = (
+#     f"Based ONLY on the following DuckDuckGo search results, answer the user's question as accurately as possible.\n"
+#     f"Original Question: {query}\n"
+#     f"Optimized Question: {optimized_query}\n"
+#     f"Search Results:\n{context}\n"
+#     f"- Only use information that is explicitly present in the search results. Do NOT use any prior knowledge, inference, or assumptions.\n"
+#     f"- If the search results cover multiple unrelated topics, only answer for the topic most relevant to the user's question. Do not mix information from different topics.\n"
+#     f"- Summarize the answer in 200 words or less. Avoid repeating content or the question.\n"
+#     f"- The answer should be a single, concise paragraph in plain text, without any special formatting, bullet points, or markdown symbols.\n"
+#     f"- Do not include the results number or URL in the answer.\n"
+#     f"- Do not include any ** or * in the answer.\n"
+# )
+# try:
+#     answer = llm.invoke(prompt)
+#     return answer.content if hasattr(answer, "content") else str(answer)
+# except Exception as e:
+#     return f"LLM analysis failed: {e}"
+    # Return raw search results instead of LLM processed summary
+    return f"Original Question: {query}\nOptimized Question: {optimized_query}\n\nSearch Results:\n{context}"

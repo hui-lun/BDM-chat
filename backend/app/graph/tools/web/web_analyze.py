@@ -28,9 +28,7 @@ def fetch_and_analyze_web_html(query: str) -> dict:
             logger.error(f"[web_analyze] {error_msg}")
             summary = error_msg
 
-    new_state = {
-        "agent_query": query,
+    return {
         "summary": summary,
-        "next_node": ""
+        "next_node": "beauty_output_web"
     }
-    return new_state

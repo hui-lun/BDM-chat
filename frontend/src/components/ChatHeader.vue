@@ -23,9 +23,9 @@
       <span 
         class="icon" 
         @click="$emit('clear-messages')" 
-        title="清除聊天紀錄"
+        title="開啟新對話"
       >
-        🗑️
+        📝
       </span>
       <span 
         class="icon" 
