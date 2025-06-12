@@ -57,7 +57,7 @@ export function useChat(chatHistory) {
       const timeString = now.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
       
       // Generate title based on the first user message
-      let title = "新對話";
+      let title = "New Chat";
       const firstUserMessage = messages.value.find(msg => msg.sender === 'user');
       
       if (firstUserMessage && firstUserMessage.text) {
@@ -70,7 +70,7 @@ export function useChat(chatHistory) {
           
           if (response.ok) {
             const result = await response.json();
-            title = result.title || "新對話";
+            title = result.title || "New Chat";
             console.log('Generated title:', title);
           } else {
             console.warn('Failed to generate title, using fallback');
@@ -108,7 +108,7 @@ export function useChat(chatHistory) {
     }
   }
 
-  // 新增：統一的文本處理函數
+  // Unified text processing function
   const processTextResponse = (accumulatedText, isEmail) => {
     messages.value[messages.value.length - 1] = {
       sender: 'ai',
@@ -119,7 +119,7 @@ export function useChat(chatHistory) {
     }
   }
 
-  // 新增：統一的 chart 處理函數
+  // Unified chart processing function
   const processChartResponse = (accumulatedText, isEmail) => {
     try {
       console.log('[frontend] Attempting to parse chart data:', accumulatedText.substring(0, 100) + '...')
@@ -128,14 +128,17 @@ export function useChat(chatHistory) {
       
       if (parsedResponse.type === 'chart' && parsedResponse.chart_data) {
         console.log('[frontend] Chart data complete, updating message')
-        console.log('[frontend] Chart data length:', parsedResponse.chart_data.length)
+        
+        // 解析 base64 编码的 JSON 数据
+        const base64Data = parsedResponse.chart_data.replace('data:application/json;base64,', '')
+        const decodedData = JSON.parse(atob(base64Data))
         
         messages.value[messages.value.length - 1] = {
           sender: 'ai',
-          text: parsedResponse.message || '圖表已生成',
+          text: decodedData.message || '圖表已生成',
           chartData: {
-            imageUrl: parsedResponse.chart_data,
-            contentType: parsedResponse.content_type || 'image/png',
+            imageUrl: decodedData.chart_image,
+            contentType: 'image/png',
             cleanup: () => {}
           },
           isEmail,
@@ -145,14 +148,13 @@ export function useChat(chatHistory) {
         
         console.log('[frontend] Message updated with chartData:', messages.value[messages.value.length - 1])
         return true // 表示成功處理了 chart
-      } else {
-        console.log('[frontend] Not a valid chart response:', parsedResponse)
       }
+      
+      console.log('[frontend] Not a valid chart response:', parsedResponse)
     } catch (parseError) {
       console.log('[frontend] Failed to parse chart data:', parseError)
-      // 解析失敗，不是有效的 chart 數據
     }
-    return false // 表示不是 chart 或處理失敗
+    return false
   }
 
 
@@ -164,7 +166,7 @@ export function useChat(chatHistory) {
     if (mailInfo) {
       // Format email info as a string
       currentMailInfo.value = mailInfo  // Save mailInfo
-      mailInfo.body = mailInfo.body.replaceAll('\r\n\r\n', '\r\n')
+      // mailInfo.body = mailInfo.body.replaceAll('\r\n\r\n', '\r\n')
 
       userMsg = [
         `Subject: ${mailInfo.title}`,
@@ -211,7 +213,7 @@ export function useChat(chatHistory) {
         let accumulatedText = ''
         let isFirstToken = true
         let isEmail = false
-        let jsonBuffer = ''  // 新增：用於累積不完整的 JSON
+        let jsonBuffer = ''  // Buffer for accumulating incomplete JSON
 
         while (true) {
           const { done, value } = await reader.read()
@@ -223,14 +225,14 @@ export function useChat(chatHistory) {
           for (const line of lines) {
             if (!line.trim()) continue
             
-            // 將當前行添加到 JSON 緩衝區
+            // Add current line to JSON buffer
             jsonBuffer += line
             console.log(jsonBuffer)
             try {
               const data = JSON.parse(jsonBuffer)
               console.log('[frontend] Received data:', data)
               
-              // 成功解析後清空緩衝區
+              // Clear buffer after successful parsing
               jsonBuffer = ''
           
               if (data.from_email !== undefined) {
@@ -240,18 +242,17 @@ export function useChat(chatHistory) {
                 console.log('[frontend] Received summary chunk:', data.summary)
                 accumulatedText += data.summary
 
-                // 檢查是否為 chart 響應
+                // Check if it's a chart response
                 if (accumulatedText.includes('"type": "chart"')) {
                   console.log('[frontend] Detected chart response')
                   
-                  // 既然數據是一次性發送的，直接嘗試處理
                   if (processChartResponse(accumulatedText, isEmail)) {
                     console.log("chart processed successfully")
                     break
                   }
                 }
 
-                // 非 chart 響應的正常處理
+                // Normal processing for non-chart responses
                 if (isFirstToken) {
                   isFirstToken = false
                   console.log('[frontend] First token, updating message')
@@ -264,19 +265,19 @@ export function useChat(chatHistory) {
                 }
               }
             } catch (e) {
-              // JSON 解析失敗，可能是因為數據不完整，繼續累積
+              // JSON parsing failed, possibly due to incomplete data, continue accumulating
               console.log("keep adding json info")
               continue
             }
           }
           
-          // 如果已經處理了 chart，跳出外層循環
+          // If chart has been processed, break out of outer loop
           if (messages.value[messages.value.length - 1].chartData) {
             break
           }
         }
 
-        // 最終檢查：如果沒有處理 chart，按文本處理
+        // Final check: if chart not processed, handle as text
         if (!messages.value[messages.value.length - 1].chartData) {
           console.log("i will go there")
           processTextResponse(accumulatedText, isEmail)
@@ -325,7 +326,7 @@ export function useChat(chatHistory) {
                 // On first token, remove loading state
                 if (isFirstToken) {
                   isFirstToken = false
-                  processTextResponse(accumulatedText, false) // 非 agent 模式沒有 email 信息
+                  processTextResponse(accumulatedText, false) // No email info in non-agent mode
                 } else {
                   // Just update the text
                   messages.value[messages.value.length - 1].text = accumulatedText
@@ -341,7 +342,7 @@ export function useChat(chatHistory) {
         console.timeEnd("chatRequest")
         
         // Final update
-        processTextResponse(accumulatedText, false) // 非 agent 模式沒有 email 信息
+        processTextResponse(accumulatedText, false) // No email info in non-agent mode
       }
     } catch (e) {
       // Handle all stop generation cases in one place

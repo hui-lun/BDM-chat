@@ -13,8 +13,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # API Configuration
-# BDM_API_BASE = "http://192.168.1.166:8000"
-BDM_API_BASE = "http://192.168.1.167:8000"
+BDM_API_BASE = "http://192.168.1.166:8000"
 
 # Field order for response
 RESPONSE_FIELDS = [
@@ -33,12 +32,11 @@ class BDMQueryResponse:
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert response to dictionary format"""
-        response = {'success': self.success}
-        if self.error:
-            response['error'] = self.error
-        if self.data is not None:
-            response['data'] = self.data
-        return response
+        return {
+            'success': self.success,
+            **({'error': self.error} if self.error else {}),
+            **({'data': self.data} if self.data is not None else {})
+        }
 
 def extract_bdm_name(query: str) -> Optional[str]:
     """
@@ -55,41 +53,26 @@ def extract_bdm_name(query: str) -> Optional[str]:
         'jo': 'Jo.Wang (王俞喬)',
     }
     
-    full_name_pattern = r'[\s:]([A-Za-z]+\.[A-Za-z]+\s*\([^)]+\))'
-    match = re.search(full_name_pattern, query)
-    if match:
+    # 尝试匹配完整格式 (Name (Chinese))
+    if match := re.search(r'[\s:]([A-Za-z]+\.[A-Za-z]+\s*\([^)]+\))', query):
         bdm_name = match.group(1).strip()
         normalized = re.sub(r'\s*\(\s*', ' (', bdm_name)
         normalized = re.sub(r'\s*\)', ')', normalized)
-        
         bdm_key = normalized.split(' ')[0].lower()
         return BDM_NORMALIZATION.get(bdm_key, normalized)
     
-    bdm_patterns = [
-        r'[\s:]([A-Za-z]+\.[A-Za-z]+)',  
-        r'[\s:]([A-Za-z]{2,})'           
-    ]
-    
+    # 尝试匹配简单格式
     excluded_terms = {
-        'week', 'month', 'quarter', 'year', 
-        'data', 'report', 'for', 'about', 
-        'show', 'get', 'me', 'the', 'and',
-        'chart', 'graph', 'of', 'in', 'on'
+        'week', 'month', 'quarter', 'year', 'data', 'report', 'for', 'about', 
+        'show', 'get', 'me', 'the', 'and', 'chart', 'graph', 'of', 'in', 'on'
     }
     
-    for pattern in bdm_patterns:
-        matches = re.finditer(pattern, query, re.IGNORECASE)
-        for match in matches:
-            bdm_name = match.group(1).strip()
-            bdm_lower = bdm_name.lower()
-            
-            if bdm_lower in excluded_terms:
-                continue
-                
-            if bdm_lower in BDM_NORMALIZATION:
-                return BDM_NORMALIZATION[bdm_lower]
-            
-            return bdm_lower  
+    for pattern in [r'[\s:]([A-Za-z]+\.[A-Za-z]+)', r'[\s:]([A-Za-z]{2,})']:
+        if match := re.search(pattern, query, re.IGNORECASE):
+            bdm_name = match.group(1).strip().lower()
+            if bdm_name not in excluded_terms:
+                return BDM_NORMALIZATION.get(bdm_name, bdm_name)
+    
     return None
 
 def extract_period(query: str) -> PeriodType:
@@ -103,12 +86,8 @@ def extract_period(query: str) -> PeriodType:
         PeriodType: Extracted period type or default to WEEK
     """
     query_lower = query.lower()
-    
-    for period_key, period_value in PERIOD_MAPPING.items():
-        if period_key in query_lower:
-            return period_value
-    
-    return PeriodType.WEEK  
+    return next((period for period_key, period in PERIOD_MAPPING.items() 
+                if period_key in query_lower), PeriodType.WEEK)
 
 def process_bdm_data(data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
@@ -124,7 +103,7 @@ def process_bdm_data(data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         return []
 
     processed_data = []
-    for item in filter(None, data):  # Filter out None/empty items
+    for item in filter(None, data):
         try:
             # Process each field
             processed_item = {
@@ -133,15 +112,13 @@ def process_bdm_data(data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
                 if field in item
             }
             
-            # Convert enum values to text
+            # Convert enum values and sort weekly updates
             processed_item = process_item(processed_item, to_text=True)
-            
-            # Sort weekly updates
-            weekly_updates = processed_item.get('Weekly update', [])
-            if isinstance(weekly_updates, list):
-                weekly_updates.sort(key=lambda x: int(m.group(1)) if (m := re.search(r'W(\d+)', x or '')) else 0)
-                processed_item['Weekly update'] = weekly_updates
-                
+            if weekly_updates := processed_item.get('Weekly update', []):
+                if isinstance(weekly_updates, list):
+                    weekly_updates.sort(key=lambda x: int(m.group(1)) if (m := re.search(r'W(\d+)', x or '')) else 0)
+                    processed_item['Weekly update'] = weekly_updates
+                    
             processed_data.append(processed_item)
             
         except Exception as e:
@@ -161,26 +138,16 @@ def fetch_bdm_data(bdm_name: str, period_type: str) -> Dict[str, Any]:
     Returns:
         Dict containing API response data
     """
-    url = f"{BDM_API_BASE}/bdm/updates/"
-    # ======== for demo ========
-    month_ago = (datetime.now() - relativedelta(months=1)).strftime('%Y-%m-%dT%H:%M:%S')
+    url = f"{BDM_API_BASE}/mgmt-projects-bdm-time/"
     current_date = datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
+    month_ago = (datetime.now() - relativedelta(months=1)).strftime('%Y-%m-%dT%H:%M:%S')
 
     params = {
-        'period_type': period_type,
-        'bdm': bdm_name,
-        'start_date': current_date  # default is the time now
+        'bdm_name': bdm_name,
+        'time_range': period_type,
+        'current_time': current_date if bdm_name == "Jo.Wang (王俞喬)" or period_type == 'week' else month_ago
     }
 
-    if bdm_name != "Jo.Wang (王俞喬)" and period_type != 'week':
-        params['start_date'] = month_ago
-    # ======== for demo ========
-    # params = {
-    #     'period_type': period_type,
-    #     'bdm': bdm_name,
-    #     'start_date': may_date
-    #     # 'start_date': datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
-    # }
     try:
         logger.info(f"Fetching BDM data from {url} with params: {params}")
         response = requests.get(url, params=params, timeout=40)
@@ -201,9 +168,7 @@ def process_bdm_query(query: str) -> Any:
         Processed response data or error message
     """
     try:
-        bdm_name = extract_bdm_name(query)
-        
-        if not bdm_name:
+        if not (bdm_name := extract_bdm_name(query)):
             return {
                 "response": "Please provide a valid BDM name. Examples:\n"
                           "- Show data for gary.yccheng this month\n"
@@ -212,13 +177,7 @@ def process_bdm_query(query: str) -> Any:
             }
             
         period_type = extract_period(query).value
-        api_response = fetch_bdm_data(bdm_name, period_type)
-        
-        if not api_response or 'data' not in api_response:
-            return []
-            
-        processed_data = process_bdm_data(api_response['data'])
-        return processed_data[0] if len(processed_data) == 1 else processed_data
+        return fetch_bdm_data(bdm_name, period_type)
         
     except requests.exceptions.RequestException as e:
         logger.error(f"API request failed: {e}")
@@ -239,12 +198,13 @@ def get_bdm_response(query: str) -> Dict[str, str]:
     """
     try:
         result = process_bdm_query(query)
-        response_data = json.dumps(
-            result if isinstance(result, (list, dict)) else [str(result)],
-            ensure_ascii=False,
-            indent=2
-        )
-        return {"response": response_data}
+        return {
+            "response": json.dumps(
+                result if isinstance(result, (list, dict)) else [str(result)],
+                ensure_ascii=False,
+                indent=2
+            )
+        }
     except Exception as e:
         logger.error(f"Error processing BDM response: {e}")
         return {"response": json.dumps([], ensure_ascii=False)}

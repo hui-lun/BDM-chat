@@ -23,6 +23,12 @@
 import { onUpdated, ref, computed } from 'vue'
 import { marked } from 'marked'
 
+// 配置 marked 來保留換行符
+marked.setOptions({
+  breaks: true,  // 將單個換行符轉換為 <br>
+  gfm: true      // 啟用 GitHub Flavored Markdown
+})
+
 const props = defineProps({
   messages: Array
 })
@@ -70,17 +76,17 @@ const generateDraft = (msg) => {
   }
 
   const subject = `Re: ${msg.mailInfo.title || 'No Subject'}`
-  const draftTemplate = `Dear ${msg.mailInfo.customer}, 
+  const draftTemplate = `Dear ${msg.mailInfo.customer},
 
-    Thank you for your inquiry. Based on your request:
-    <br><br>
-    ${textContent}
-    <br><br>
-    If you have any questions, please feel free to contact me. 
-    Thank you!
-    
-    <br><br>
-    ${msg.mailInfo.BDM}`
+Thank you for your inquiry. Based on your request:
+
+${textContent}
+
+If you have any questions, please feel free to contact me. 
+Thank you!
+
+Best regards,
+${msg.mailInfo.BDM}`
 
   emit('open-draft-form', draftTemplate)
 }

@@ -2,7 +2,7 @@ import json
 import logging
 from typing_extensions import TypedDict
 from .llm import llm
-from .tools.spec.spec_analyze_v1 import search_database
+from .tools.spec.spec_analyze import search_database
 from .tools.web.web_analyze import fetch_and_analyze_web_html
 from .tools.mgmt.manage import get_manage_data
 from .tools.mgmt.pretty_output import pretty_print_projects
@@ -25,7 +25,7 @@ def select_tool(state: AgentState):
     
     prompt = (
         f"Given the user input:'{query}', decide which tool to use:\n"
-        "1. If the question is about retrieving data from the database, return 'spec_search'.\n"
+        "1. If the question is about retrieving data from the database or from qvl(QVL), return 'spec_search'.\n"
         "2. If the question requires analyzing web content, return 'web_analyze'.\n"
         "3. If the question is about BDM reports, updates, or contains a person's name (e.g., gary.yccheng, alice.wang) "
         "and/or time period (e.g., this week, monthly, quarterly, this year), return 'manage'.\n"
@@ -52,7 +52,7 @@ def spec_search(state: AgentState):
         return {
             "summary": summary,
             "next_node": "beauty_output_text"
-            # "next_node": "END"
+            #  "next_node": "END"
         }
 
 def web_analyze(state: AgentState):
@@ -64,6 +64,8 @@ def web_analyze(state: AgentState):
         "summary": result.get("summary", ""),
         "next_node": "beauty_output_web"
     }
+
+
 
 def manage(state: AgentState):
     """Process BDM management requests"""

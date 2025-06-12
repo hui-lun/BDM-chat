@@ -301,7 +301,14 @@ def search_database(query: str) -> str:
     else:
         logger.info("error")
     
-    return result
+    if "qvl" in query.lower():
+        with open("result_output.txt", "w", encoding="utf-8") as f:
+            f.write(str(result))
+        base_url = "http://192.168.1.166:5500/main/index.html"
+        final_url = f"{base_url}?txt=result_output.txt"
+        return final_url
+    else:
+        return result
         
 def get_nested_value(doc, field):
     keys = field.split('.')
@@ -553,5 +560,7 @@ def clean_spec(model,data_list):
             else:
                 result += f"    - {k}: {v}\n"
         result += "\n"
-    return result
+    
+    return result       
+
         

@@ -1,4 +1,11 @@
 import { ref } from 'vue'
+import { marked } from 'marked'
+
+// Configure marked to preserve line breaks
+marked.setOptions({
+  breaks: true,  // Convert single line breaks to <br>
+  gfm: true      // Enable GitHub Flavored Markdown
+})
 
 export function useOutlook(showErrorMessage, query, sendQuery) {
   // Store the latest email content (auto-update on email switch, but do not auto-fill query)
@@ -86,30 +93,24 @@ export function useOutlook(showErrorMessage, query, sendQuery) {
     handleEmailChange(true)
   }
 
-  // function openDraftForm(subject = '', body = '', toEmail = '') {
-  //   if (Office.context.mailbox.displayNewMessageForm) {
-  //     // Convert text to HTML format
-  //     const htmlBody = body.split('\n').map(line => `<p>${line}</p>`).join('')
-      
-  //     Office.context.mailbox.displayNewMessageForm({
-  //       toRecipients: [toEmail],  // Use the provided email from mailInfo
-  //       subject: subject || "Draft via displayNewMessageForm",
-  //       htmlBody: htmlBody || "<p>Hello from Add-in!</p>"
-  //     });
-  //   } else {
-  //     console.error("This Outlook version does not support displayNewMessageForm.");
-  //   }
-  // }
 
   function openDraftForm(body = '') {
-  if (Office.context.mailbox?.item?.displayReplyForm) {
-    const htmlBody = body.split('\n').map(line => `<p>${line}</p>`).join('');
-    Office.context.mailbox.item.displayReplyForm(htmlBody);
-  } else {
-    console.error("This Outlook version does not support displayReplyForm.");
+    if (Office.context.mailbox?.item?.displayReplyForm) {
+      // Use marked to convert markdown to HTML format
+      const htmlBody = marked.parse(body);
+      
+      // Add CSS styles to set font
+      const styledHtmlBody = `
+        <div style="font-family: 'Aptos', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6;">
+          ${htmlBody}
+        </div>
+      `;
+      
+      Office.context.mailbox.item.displayReplyForm(styledHtmlBody);
+    } else {
+      console.error("This Outlook version does not support displayReplyForm.");
+    }
   }
-}
-
 
   return {
     handleEmailChange,
