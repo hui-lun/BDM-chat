@@ -8,13 +8,10 @@ import asyncio
 import logging
 from typing import AsyncGenerator
 from fastapi.middleware.cors import CORSMiddleware
+from .graph.tools.email.email_to_db_v1 import process_email_to_mongo
 from pymongo import MongoClient
 from dotenv import load_dotenv
 import uuid
-from .graph import api_code
-from .graph.tools.email.email_to_db import process_email_to_mongo
-
-
 
 
 # Configure logging
@@ -54,9 +51,6 @@ class ChatRequest(BaseModel):
 class AgentChatRequest(BaseModel):
     agent_query: str
 
-class TitleGenerationRequest(BaseModel):
-    first_message: str
-
 class QAResponse(BaseModel):
     question: str
     answer: str
@@ -93,8 +87,7 @@ async def agent_chat(req: AgentChatRequest):
         is_email = True
         email_info = parse_email_query(query)
         email = mail_format_database(email_info)
-        logger.info(f"email {email}")
-        thread_id_db = api_code.call_get_email(email)
+        thread_id_db = process_email_to_mongo(email)
         thread_id = thread_id_db["thread_id"]
         config = {"configurable": {"thread_id": thread_id}}
         state = AgentState(agent_query=email_info['summary'], summary="")
@@ -113,7 +106,6 @@ async def agent_chat(req: AgentChatRequest):
         if result.get("needs_streaming"):
             prompt = result["summary"]
             logger.info(f"[agent_chat] Starting LLM streaming for final result")
-            # llm stream output 
             async for chunk in llm.astream(prompt):
                 
                 if hasattr(chunk, "content"):
@@ -182,53 +174,50 @@ async def chat(req: ChatRequest):
         }
     )
 
-@app.post("/generate-title")
-async def generate_title(req: TitleGenerationRequest):
+@app.get("/api/qa-history/{title}", response_model=QAHistoryResponse)
+async def get_qa_history(title: str):
     """
-    Generate a concise title based on the first user message
+    Get Q&A history for a given title.
+    Questions are taken from BDM Email field, answers from checkpoint summary field.
     """
-    try:
-        # Create a prompt for title generation
-        prompt = f"""
-        Based on the user's first message below, generate a concise title (maximum 15 characters).
-        The title should:
+    project_doc = project_col.find_one({"Title": title})
+    if not project_doc:
+        logger.info(f"No project document found for title: {title}")
+        return {"title": title, "qa_list": []}
 
-        1. Capture the core topic or keywords of the message
-        2. Be clear and easy to understand
-        3. Avoid overly generic or vague terms
-        4. Include the product/service name if the user is asking about something specific
-        5. Include relevant technical keywords if the message is about a technical issue
+    thread_id = project_doc.get("thread_id")
+    if not thread_id:
+        logger.warning(f"No thread_id found for project: {title}")
+        return {"title": title, "qa_list": []}
 
-        User message: {req.first_message}
+    # Get questions from BDM Email field
+    bdm_email_list = project_doc.get("BDM Email", [])
+    if not isinstance(bdm_email_list, list) or not bdm_email_list:
+        logger.warning(f"No BDM Email list found for project: {title}")
+        return {"title": title, "qa_list": []}
 
-        Please return only the title, without any explanation.
-        """
-                
-        # Use the LLM to generate the title
-        response = await llm.ainvoke(prompt)
-        
-        # Extract the title from the response
-        if hasattr(response, "content"):
-            title = response.content.strip()
-        elif hasattr(response, "text"):
-            title = response.text.strip()
-        else:
-            title = str(response).strip()
-        
-        # Clean up the title (remove quotes, extra spaces, etc.)
-        title = title.replace('"', '').replace('"', '').replace('「', '').replace('」', '').strip()
-        # If title is too long, truncate it
-        if len(title) > 15:
-            title = title[:15] + "..."
-        
-        # If no title generated, use a fallback
-        if not title or title.lower() in ['', 'none', 'null', 'undefined']:
-            title = "新對話"
-        
-        logger.info(f"Generated title: '{title}' for message: '{req.first_message[:50]}...'")
-        
-        return {"title": title}
-        
-    except Exception as e:
-        logger.error(f"Error generating title: {str(e)}")
-        return {"title": "新對話"}
+    # Get checkpoints for this thread
+    qa_list = []
+    checkpoints = checkpoint_col.find({"thread_id": thread_id}).sort("checkpoint.ts", -1)
+
+    for i, cp in enumerate(checkpoints):
+        raw_cp = cp.get("checkpoint")
+        if not raw_cp or i >= len(bdm_email_list):
+            continue
+        try:
+            unpacked = msgpack.unpackb(raw_cp, raw=False)
+            cv = unpacked.get("channel_values", {})
+            summary = cv.get("summary")
+
+            answer = summary[0] if isinstance(summary, list) else summary
+            if answer and answer.strip():
+                qa_list.append({
+                    "question": bdm_email_list[i],
+                    "answer": answer
+                })
+        except Exception as e:
+            logger.error(f"Error processing checkpoint for thread {thread_id}: {e}")
+            continue
+
+    logger.info(f"Retrieved {len(qa_list)} Q&A pairs for title: {title}")
+    return {"title": title, "qa_list": qa_list}

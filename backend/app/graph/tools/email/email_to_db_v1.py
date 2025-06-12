@@ -3,14 +3,25 @@ import os
 import uuid
 import logging
 from datetime import datetime
+from pymongo import MongoClient
+from dotenv import load_dotenv
 import re
-from ...mongodb import client
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
 def normalize_title(title: str) -> str:
     return re.sub(r"^(RE:|FW:|FWD:)\s*", "", title, flags=re.IGNORECASE).strip()
+ 
+def connect_mongo():
+    load_dotenv()
+    MONGODB_IP = os.getenv('MONGODB_IP')
+    MONGODB_USER = os.getenv('MONGODB_USER')
+    MONGODB_PASSWORD = os.getenv('MONGODB_PASSWORD')
+    uri = f"mongodb://{MONGODB_USER}:{MONGODB_PASSWORD}@{MONGODB_IP}:27017/admin"
+    client = MongoClient(uri)
+    logger.debug("MongoDB connection established")
+    return client
  
 def process_email_to_mongo(email: dict) -> str:
     """
@@ -20,6 +31,7 @@ def process_email_to_mongo(email: dict) -> str:
     }
     """
     logger.info(f"Processing email to MongoDB: {email['Title']}")
+    client = connect_mongo()
     db = client["BDM-mgmt"]
     project_col = db["BDM-project"]
     company_col = db["company-profile"]

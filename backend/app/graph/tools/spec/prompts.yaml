@@ -51,7 +51,7 @@ SPEC:
     description: Development or release stage (e.g., EVT, DVT, MP).
   - mapping: description
     description: List of structured specification strings describing major system components.
-  - mapping: storageInfo
+  - mapping: storageInfo 
     description: List all storageInfo.
   - mapping: storageInfo.location
     description: The physical location of the storage bays (e.g., Front side, Rear).
@@ -69,7 +69,7 @@ SPEC:
     description: Storage interface speed or generation (e.g., Gen4); may be null.
   - mapping: storageInfo.connector
     description: List of storage connector type and count pairs (e.g., [["U.2", "2"]]).
-  - mapping: pcieInfo
+  - mapping: pcieInfo 
     description: List all pcieInfo.
   - mapping: pcieInfo.source
     description: The origin of PCIe signal routing (e.g., CPU0).
@@ -83,7 +83,7 @@ SPEC:
     description: Slot-level bandwidth (e.g., x16).
   - mapping: pcieInfo.singalBandwidth
     description: Signal-level bandwidth (e.g., x16).
-  - mapping: systemInfo
+  - mapping: systemInfo 
     description: List all systemInfo.
   - mapping: systemInfo.gbtsn
     description: The GIGABYTE serial number repeated inside systemInfo.
@@ -141,7 +141,7 @@ SPEC:
     description: List describing management LAN (mLAN) ports, including speed and count.
   - mapping: systemInfo.psu
     description: PSU specifications, including count, redundancy, and wattage.
- 
+
 QVL:
   - mapping: BAREBONE
     description: The main chassis and motherboard assembly without CPU, RAM, or storage pre-installed.
@@ -155,12 +155,6 @@ QVL:
     description: Network interface card installed in a standard PCI Express slot.
   - mapping: POWER CORD
     description: The type and specification of power cords used to supply power to the system.
-  - mapping: RAID CARD PCI-E>>>DUAL-PORT
-    description: A PCIe-based RAID controller with dual-port configuration for redundancy or throughput.
-  - mapping: RAID CARD PCI-E>>>OUTWARD-PORT
-    description: A RAID controller card with external connection ports for additional enclosures.
-  - mapping: RAID CARD PCI-E>>>SINGLE-PORT
-    description: A PCIe RAID controller card with a single port connection.
   - mapping: RAID CARD WITH TRI-MODE
     description: A RAID controller that supports SAS, SATA, and NVMe (Tri-mode) drives.
   - mapping: STORAGE 2.5" SSD
@@ -181,8 +175,6 @@ QVL:
     description: High-performance solid-state drive connected via the PCI-E interface, designed for data-intensive enterprise applications requiring ultra-fast throughput.
   - mapping: RAID CARD PCI-E
     description: RAID controller card installed in a PCI-E slot, used to manage multiple hard drives in RAID configurations for improved performance and redundancy.
- 
- 
- 
- 
- 
+
+
+

@@ -2,7 +2,7 @@ import json
 import logging
 from typing_extensions import TypedDict
 from .llm import llm
-from .tools.spec.spec_analyze import search_database
+from .tools.spec.spec_analyze_v1 import search_database
 from .tools.web.web_analyze import fetch_and_analyze_web_html
 from .tools.mgmt.manage import get_manage_data
 from .tools.mgmt.pretty_output import pretty_print_projects
@@ -52,6 +52,7 @@ def spec_search(state: AgentState):
         return {
             "summary": summary,
             "next_node": "beauty_output_text"
+            # "next_node": "END"
         }
 
 def web_analyze(state: AgentState):
@@ -79,8 +80,8 @@ def manage(state: AgentState):
             logger.debug("[manage] Processing response with 'response' field")
             response_text = result['response']
             data = response_text
-
             temp_node = "END"            
+            
             if not ('"type": "chart"' in str(response_text)):
                 logger.debug("[manage] Formatting non-chart response")
                 response_text = pretty_print_projects(data)

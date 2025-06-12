@@ -13,6 +13,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # API Configuration
+# BDM_API_BASE = "http://192.168.1.166:8000"
 BDM_API_BASE = "http://192.168.1.167:8000"
 
 # Field order for response

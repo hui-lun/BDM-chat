@@ -32,7 +32,22 @@ const chatBody = ref(null)
 const parsedMessages = computed(() =>
   props.messages.map(msg => ({
     ...msg,
-    parsedHtml: marked.parse(msg.text || '') // 將 Markdown 轉 HTML
+    parsedHtml: (() => {
+      // 確保 text 是字符串類型
+      let textContent = msg.text || ''
+      
+      // 如果是數組，轉換為字符串
+      if (Array.isArray(textContent)) {
+        textContent = textContent.join('\n')
+      }
+      
+      // 確保是字符串類型
+      if (typeof textContent !== 'string') {
+        textContent = String(textContent)
+      }
+      
+      return marked.parse(textContent)
+    })()
   }))
 )
 
@@ -41,12 +56,25 @@ const emit = defineEmits(['open-draft-form'])
 const generateDraft = (msg) => {
   if (!msg.mailInfo) return
 
+  // 確保 text 是字符串類型
+  let textContent = msg.text || ''
+  
+  // 如果是數組，轉換為字符串
+  if (Array.isArray(textContent)) {
+    textContent = textContent.join('\n')
+  }
+  
+  // 確保是字符串類型
+  if (typeof textContent !== 'string') {
+    textContent = String(textContent)
+  }
+
   const subject = `Re: ${msg.mailInfo.title || 'No Subject'}`
   const draftTemplate = `Dear ${msg.mailInfo.customer}, 
 
     Thank you for your inquiry. Based on your request:
     <br><br>
-    ${msg.text}
+    ${textContent}
     <br><br>
     If you have any questions, please feel free to contact me. 
     Thank you!

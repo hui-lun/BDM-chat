@@ -21,7 +21,7 @@ export function useChat(chatHistory) {
   watch(messages, scrollToBottom, { deep: true })
 
   // Save current chat to history
-  const saveToHistory = () => {
+  const saveToHistory = async () => {
     try {
       if (!chatHistory || !chatHistory.value) {
         console.warn('Chat history not available');
@@ -55,8 +55,30 @@ export function useChat(chatHistory) {
       // If no active chat or active chat not found, create a new one
       const now = new Date();
       const timeString = now.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
-      const dateString = now.toISOString().split('T')[0];
-      const title = `對話 ${dateString} ${timeString}`;
+      
+      // Generate title based on the first user message
+      let title = "新對話";
+      const firstUserMessage = messages.value.find(msg => msg.sender === 'user');
+      
+      if (firstUserMessage && firstUserMessage.text) {
+        try {
+          const response = await fetch('/generate-title', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ first_message: firstUserMessage.text })
+          });
+          
+          if (response.ok) {
+            const result = await response.json();
+            title = result.title || "新對話";
+            console.log('Generated title:', title);
+          } else {
+            console.warn('Failed to generate title, using fallback');
+          }
+        } catch (error) {
+          console.error('Error generating title:', error);
+        }
+      }
       
       // Create a new chat history entry
       const newChat = {
@@ -86,6 +108,55 @@ export function useChat(chatHistory) {
     }
   }
 
+  // 新增：統一的文本處理函數
+  const processTextResponse = (accumulatedText, isEmail) => {
+    messages.value[messages.value.length - 1] = {
+      sender: 'ai',
+      text: accumulatedText,
+      isEmail,
+      mailInfo: isEmail ? currentMailInfo.value : null,
+      loading: false
+    }
+  }
+
+  // 新增：統一的 chart 處理函數
+  const processChartResponse = (accumulatedText, isEmail) => {
+    try {
+      console.log('[frontend] Attempting to parse chart data:', accumulatedText.substring(0, 100) + '...')
+      const parsedResponse = JSON.parse(accumulatedText)
+      console.log('[frontend] Parsed response:', parsedResponse)
+      
+      if (parsedResponse.type === 'chart' && parsedResponse.chart_data) {
+        console.log('[frontend] Chart data complete, updating message')
+        console.log('[frontend] Chart data length:', parsedResponse.chart_data.length)
+        
+        messages.value[messages.value.length - 1] = {
+          sender: 'ai',
+          text: parsedResponse.message || '圖表已生成',
+          chartData: {
+            imageUrl: parsedResponse.chart_data,
+            contentType: parsedResponse.content_type || 'image/png',
+            cleanup: () => {}
+          },
+          isEmail,
+          mailInfo: isEmail ? currentMailInfo.value : null,
+          loading: false
+        }
+        
+        console.log('[frontend] Message updated with chartData:', messages.value[messages.value.length - 1])
+        return true // 表示成功處理了 chart
+      } else {
+        console.log('[frontend] Not a valid chart response:', parsedResponse)
+      }
+    } catch (parseError) {
+      console.log('[frontend] Failed to parse chart data:', parseError)
+      // 解析失敗，不是有效的 chart 數據
+    }
+    return false // 表示不是 chart 或處理失敗
+  }
+
+
+  
   // Support mailInfo object structure
   const sendQuery = async (mailInfo = null) => {
     let userMsg
@@ -140,6 +211,7 @@ export function useChat(chatHistory) {
         let accumulatedText = ''
         let isFirstToken = true
         let isEmail = false
+        let jsonBuffer = ''  // 新增：用於累積不完整的 JSON
 
         while (true) {
           const { done, value } = await reader.read()
@@ -150,9 +222,16 @@ export function useChat(chatHistory) {
 
           for (const line of lines) {
             if (!line.trim()) continue
+            
+            // 將當前行添加到 JSON 緩衝區
+            jsonBuffer += line
+            console.log(jsonBuffer)
             try {
-              const data = JSON.parse(line)
+              const data = JSON.parse(jsonBuffer)
               console.log('[frontend] Received data:', data)
+              
+              // 成功解析後清空緩衝區
+              jsonBuffer = ''
           
               if (data.from_email !== undefined) {
                 console.log('[frontend] Received from_email flag:', data.from_email)
@@ -160,43 +239,23 @@ export function useChat(chatHistory) {
               } else if (data.summary !== undefined) {
                 console.log('[frontend] Received summary chunk:', data.summary)
                 accumulatedText += data.summary
-                console.log('[frontend] Accumulated text so far:', accumulatedText)
 
-                // 判斷是否為 chart
-                let parsedResponse
-                try {
-                  parsedResponse = JSON.parse(accumulatedText)
-                } catch {
-                  parsedResponse = { type: 'text', message: accumulatedText }
-                }
-
-                if (
-                  parsedResponse.type === 'chart' &&
-                  parsedResponse.chart_data
-                ) {
-                  console.log("i'm chart")
-                  messages.value[messages.value.length - 1] = {
-                    sender: 'ai',
-                    text: parsedResponse.message,
-                    chartData: {
-                      imageUrl: parsedResponse.chart_data,
-                      contentType: parsedResponse.content_type || 'image/png',
-                      cleanup: () => {}
-                    }
+                // 檢查是否為 chart 響應
+                if (accumulatedText.includes('"type": "chart"')) {
+                  console.log('[frontend] Detected chart response')
+                  
+                  // 既然數據是一次性發送的，直接嘗試處理
+                  if (processChartResponse(accumulatedText, isEmail)) {
+                    console.log("chart processed successfully")
+                    break
                   }
-                  // return
                 }
 
+                // 非 chart 響應的正常處理
                 if (isFirstToken) {
                   isFirstToken = false
                   console.log('[frontend] First token, updating message')
-                  messages.value[messages.value.length - 1] = {
-                    sender: 'ai',
-                    text: accumulatedText,
-                    isEmail,
-                    mailInfo: isEmail ? currentMailInfo.value : null,
-                    loading: false
-                  }
+                  processTextResponse(accumulatedText, isEmail)
                 } else {
                   // Just update the text
                   console.log('[frontend] Updating message text')
@@ -205,18 +264,22 @@ export function useChat(chatHistory) {
                 }
               }
             } catch (e) {
-              console.error('Error parsing streaming response:', line, e)
+              // JSON 解析失敗，可能是因為數據不完整，繼續累積
+              console.log("keep adding json info")
+              continue
             }
+          }
+          
+          // 如果已經處理了 chart，跳出外層循環
+          if (messages.value[messages.value.length - 1].chartData) {
+            break
           }
         }
 
-        // 最終補上最後一次更新（保險）
-        messages.value[messages.value.length - 1] = {
-          sender: 'ai',
-          text: accumulatedText,
-          isEmail,
-          mailInfo: isEmail ? currentMailInfo.value : null,
-          loading: false
+        // 最終檢查：如果沒有處理 chart，按文本處理
+        if (!messages.value[messages.value.length - 1].chartData) {
+          console.log("i will go there")
+          processTextResponse(accumulatedText, isEmail)
         }
       }
       
@@ -262,11 +325,7 @@ export function useChat(chatHistory) {
                 // On first token, remove loading state
                 if (isFirstToken) {
                   isFirstToken = false
-                  messages.value[messages.value.length - 1] = {
-                    sender: 'ai',
-                    text: accumulatedText,
-                    loading: false
-                  }
+                  processTextResponse(accumulatedText, false) // 非 agent 模式沒有 email 信息
                 } else {
                   // Just update the text
                   messages.value[messages.value.length - 1].text = accumulatedText
@@ -282,11 +341,7 @@ export function useChat(chatHistory) {
         console.timeEnd("chatRequest")
         
         // Final update
-        messages.value[messages.value.length - 1] = {
-          sender: 'ai',
-          text: accumulatedText,
-          loading: false
-        }
+        processTextResponse(accumulatedText, false) // 非 agent 模式沒有 email 信息
       }
     } catch (e) {
       // Handle all stop generation cases in one place
@@ -311,7 +366,7 @@ export function useChat(chatHistory) {
         // Save to history after sending a message
         if (messages.value && messages.value.length > 0) {
           console.log('Attempting to save chat to history...')
-          const savedChat = saveToHistory()
+          const savedChat = await saveToHistory()
           console.log('Chat save result:', savedChat ? 'success' : 'failed')
         }
       } catch (error) {

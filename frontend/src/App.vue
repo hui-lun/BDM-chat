@@ -33,13 +33,6 @@
       @open-delete-modal="openDeleteModal"
     />
 
-    <!-- Q&A History Sidebar -->
-    <QASidebar
-      :is-visible="showQASidebar"
-      :title="currentTitle"
-      @close="closeQASidebar"
-    />
-
 
 
     <!-- chatbot Header -->
@@ -48,7 +41,6 @@
       @close-history-menu="closeHistoryMenu"
       @clear-messages="clearMessages"
       @send-email-content="sendEmailContent"
-      @open-qa-sidebar="openQASidebar"
       :current-title="currentTitle"
     />
 
@@ -78,16 +70,11 @@ import ChatHeader from './components/ChatHeader.vue'
 import ChatBody from './components/ChatBody.vue'
 import ChatFooter from './components/ChatFooter.vue'
 import ChatHistoryMenu from './components/ChatHistoryMenu.vue'
-import QASidebar from './components/QASidebar.vue'
 import { useChat } from './composables/useChat'
 import { useOutlook } from './composables/useOutlook'
 import { useDrawer } from './composables/useDrawer'
 
 localStorage.setItem('should-restore-chat', 'true')
-
-// Current title for Q&A history
-const currentTitle = ref('')
-const showQASidebar = ref(false)
 
 // Initialize chat history state
 const chatHistory = ref([])
@@ -155,16 +142,6 @@ watch(chatActiveChatId, (newVal) => {
   }
 }, { deep: true, immediate: true })
 
-// Open/close Q&A sidebar
-const openQASidebar = (title) => {
-  currentTitle.value = title
-  showQASidebar.value = true
-  closeHistoryMenu()
-}
-
-const closeQASidebar = () => {
-  showQASidebar.value = false
-}
 
 const loading = ref(true) // Plugin readiness loading
 
@@ -285,7 +262,7 @@ const handleButtonClick = async () => {
     await sendQuery()
     // If we're not continuing an existing chat, save to history
     if (!chatActiveChatId.value && messages.value.length > 0) {
-      saveToHistory()
+      await saveToHistory()
     }
   }
 }
