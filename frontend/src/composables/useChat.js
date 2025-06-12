@@ -347,11 +347,8 @@ export function useChat(chatHistory) {
     } catch (e) {
       // Handle all stop generation cases in one place
       if (e.name === 'AbortError' || axios.isCancel(e)) {
-        messages.value[messages.value.length - 1] = { 
-          sender: 'ai', 
-          text: '(已停止生成)', 
-          loading: false 
-        }
+        // Keep the current content as is, just remove loading state
+        messages.value[messages.value.length - 1].loading = false
       } else {
         messages.value[messages.value.length - 1] = { 
           sender: 'ai', 
