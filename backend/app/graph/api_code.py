@@ -56,3 +56,11 @@ def call_get_email(email):
 
     response = requests.post(url, json=payload)
     return response.json()
+
+def save_output_file(index):
+    url = f"{BASE_URL}/save_file"
+    payload = {
+        "index":index
+    }
+    response = requests.post(url,json=payload)
+    return response.json()

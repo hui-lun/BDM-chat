@@ -52,7 +52,12 @@ const parsedMessages = computed(() =>
         textContent = String(textContent)
       }
       
-      return marked.parse(textContent)
+      // 添加調試日誌
+      console.log('[ChatBody] Original text:', textContent.substring(0, 200))
+      const parsed = marked.parse(textContent)
+      console.log('[ChatBody] Parsed HTML:', parsed.substring(0, 200))
+      
+      return parsed
     })()
   }))
 )
@@ -113,7 +118,7 @@ onUpdated(() => {
   margin: 10px 0 5px;
 }
 
-.message-text ::v-deep p {
+.message-text :deep(p) {
   margin: 3px !important;
 }
 

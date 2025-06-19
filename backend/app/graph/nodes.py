@@ -41,7 +41,7 @@ def spec_search(state: AgentState):
     logger.info("[spec_search] Executing spec search")
     logger.debug(f"Query: {state['agent_query']}")
     
-    summary = search_database(state["agent_query"])
+    summary, temp = search_database(state["agent_query"])
     if summary == "database not found this server":
         logger.info("[spec_search] No database found, redirecting to web_analyze")
         return {
@@ -49,11 +49,19 @@ def spec_search(state: AgentState):
         }
     else:
         logger.info(f"[spec_search] Found summary: {summary}")
-        return {
-            "summary": summary,
-            "next_node": "beauty_output_text"
-            #  "next_node": "END"
-        }
+
+        if temp=="qvl":
+            return {
+                "summary": summary,
+                # "next_node": "beauty_output_text"
+                "next_node": "END"
+            }
+        else:
+            return {
+                "summary": summary,
+                "next_node": "beauty_output_text"
+                # "next_node": "END"
+            }
 
 def web_analyze(state: AgentState):
     """Analyze web content based on the query"""
@@ -64,8 +72,6 @@ def web_analyze(state: AgentState):
         "summary": result.get("summary", ""),
         "next_node": "beauty_output_web"
     }
-
-
 
 def manage(state: AgentState):
     """Process BDM management requests"""
@@ -127,15 +133,22 @@ def beauty_output_text(state: AgentState):
     logger.info("[beauty_output_text] Generating response with markdown format for text content")
 
     prompt = (
-        "You are a professional technical writer. "
-        "Please rewrite the following content into a well-structured, professional Markdown format. "
-        "The output should include:\n"
-        "- A level-2 Markdown title (## Title)\n"
-        "- Section headers in bold (e.g., **1. Overview**)\n"
-        "- Bullet points or numbered lists where appropriate\n"
-        "- Important terms in bold (e.g., **Company Name**)\n"
-        "- One blank line between sections for readability\n\n"
-        "Here is the content:\n"
+    "You are a professional technical writer.\n"
+    "Please return the response in **Markdown format**, but do NOT wrap it in triple backticks (```) or use ```markdown.\n"
+    "Just return plain Markdown content directly.\n"
+    "You may rephrase or expand slightly for clarity, but DO NOT invent or fabricate any data.\n"
+    "Do NOT add placeholders like '[Please Replace]'.\n"
+    "IMPORTANT: You MUST use proper Markdown syntax:\n"
+    "- Use ## for level-2 headings\n"
+    "- Use **text** for bold text\n"
+    "- Use *text* for italic text\n"
+    "- Use - or * for bullet points\n"
+    "- Use 1. 2. 3. for numbered lists\n"
+    "- Leave blank lines between sections\n"
+    "- Use `code` for inline code\n"
+    "- Use ``` for code blocks\n\n"
+    "- For plain URLs, use Markdown link format: [link text](https://example.com)\n\n"
+    "Here is the content:\n"
         f"{state['summary']}"
     )
 

@@ -37,7 +37,7 @@ BAREBONE_COLLECTION_NAME = "server_spec_barebone"
 CURRENT_DIR = os.path.dirname(__file__)
 PROMPT_PATH = os.path.join(CURRENT_DIR, "prompts.yaml")
 
-return_result = []
+
  
 pattern = r'[A-Za-z0-9]+-[A-Za-z0-9]'
 collection_fields_cache = {}
@@ -110,6 +110,7 @@ def match_projectmodel(query:str) -> str:
     """
     global all_qvl_key
     global qvl_field_lookup
+    return_result = []
     try:
         #find projectmodel and gbtsn and save to db
         logger.info(repr(query))
@@ -300,15 +301,22 @@ def search_database(query: str) -> str:
         result = tool_obj.invoke(input=query)
     else:
         logger.info("error")
+
+    logger.info(f"return result : {result}")
     
     if "qvl" in query.lower():
-        with open("result_output.txt", "w", encoding="utf-8") as f:
-            f.write(str(result))
-        base_url = "http://192.168.1.166:5500/main/index.html"
-        final_url = f"{base_url}?txt=result_output.txt"
-        return final_url
+        if isinstance(result,list):
+            result = "\n".join(result)
+        path = api_code.save_output_file(result)
+        #logger.info(f"url path: {path}")
+        temp = "qvl"
+        base_url = "http://192.168.1.166:5500/Desktop/main/index.html"
+        final_url = f"{base_url}?txt=../mongodb/app/file/{path}"
+
+        return final_url, temp
     else:
-        return result
+        temp = "spec"
+        return result, temp
         
 def get_nested_value(doc, field):
     keys = field.split('.')
