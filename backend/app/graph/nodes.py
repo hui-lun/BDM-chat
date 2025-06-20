@@ -41,7 +41,8 @@ def spec_search(state: AgentState):
     logger.info("[spec_search] Executing spec search")
     logger.debug(f"Query: {state['agent_query']}")
     
-    summary, temp = search_database(state["agent_query"])
+    question = state["agent_query"]
+    summary, temp , num= search_database(state["agent_query"])
     if summary == "database not found this server":
         logger.info("[spec_search] No database found, redirecting to web_analyze")
         return {
@@ -50,11 +51,19 @@ def spec_search(state: AgentState):
     else:
         logger.info(f"[spec_search] Found summary: {summary}")
 
-        if temp=="qvl":
+        if temp=="qvl" and num>5:
+            summary = f"The QVL database contains {num} records. The user's question is: {question}. For more details, please refer to: {summary}"
             return {
                 "summary": summary,
-                # "next_node": "beauty_output_text"
-                "next_node": "END"
+                "next_node": "beauty_output_text"
+                # "next_node": "END"
+            }
+        elif temp == "unmatch" and num>5:
+            summary = f"The database contains {num} records. The user's question is: {question}. For more details, please refer to: {summary}"
+            return {
+                "summary": summary,
+                "next_node": "beauty_output_text"
+                # "next_node": "END"
             }
         else:
             return {
